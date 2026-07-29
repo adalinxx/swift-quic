@@ -84,7 +84,7 @@ public enum HTTP3Client {
         }
 
         let (udpChannel, multiplexer) = try await DatagramBootstrap(group: eventLoopGroup)
-            .channelOption(.datagramVectorReadMessageCount, value: 8)            .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
+            .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
             .bind(host: bindHost, port: 0) {
                 channel -> EventLoopFuture<(
                     any Channel, HTTP3ClientConnectionMultiplexer<QUICConnectionCreator, QUICStreamCreator>
