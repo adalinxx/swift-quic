@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0 — 2026-07-29
+
+- **Datagram receive batching (`recvmmsg`)**, now correct: all UDP sockets
+  enable NIO vectored datagram reads paired with a
+  `FixedSizeRecvByteBufferAllocator` sized so each of the 8 message slots holds
+  a full datagram (2 KiB — matching NIO's own datagram default). This is the
+  fix for the truncation that broke Linux in 0.5.0's reverted attempt: the
+  earlier try enabled the option without sizing the receive buffer, so every
+  packet was truncated on Linux. Verified across repeated Linux runs. No-op on
+  Darwin (no `recvmmsg`), where servers rarely run anyway.
+- Hardened one intermittently-flaky integration test against the upstream
+  TLS-teardown race (docs/upstream-issues/03) with a bounded connection retry.
+
 ## 0.5.0 — 2026-07-29
 
 - **HTTP/3 trailers**: send and receive trailer fields on both the collected

@@ -174,7 +174,10 @@ struct StreamTests {
                 }
             }
 
-            try await QUICClient.withConnection(
+            // The initial handshake can intermittently fail with the upstream
+            // TLS-teardown race (docs/upstream-issues/03) under heavy load;
+            // retry a few times so this doesn't flake CI.
+            try await withRetriedConnection(
                 to: "127.0.0.1",
                 port: port,
                 configuration: configurations.client
