@@ -28,8 +28,6 @@ split by who can move each item.
   on swift-nio-http3, with collected *and* incremental-streaming bodies in
   both directions, **trailer fields** (send + receive), end-to-end tested and
   verified against `cloudflare-quic.com`.
-- **Datagram vectored reads** (`recvmmsg`) on all UDP sockets for server
-  packet-rate scalability.
 
 ## In progress (ours to do)
 
@@ -39,9 +37,11 @@ split by who can move each item.
   [interop/](interop/). Remaining: the full official runner matrix (needs its
   ns-3 simulator), more implementations, and verifying RSA server identities
   (the runner's default certs) against the SwiftTLS signing path.
-- **Performance**: receive batching (`recvmmsg`) is enabled; send batching
-  (`sendmmsg`), buffer reuse in the stream bridge, and an allocation-counter
-  regression harness remain.
+- **Performance**: receive batching (`recvmmsg` via
+  `datagramVectorReadMessageCount`) was tried and reverted — it broke the
+  Linux datagram path and needs deeper NIOQUIC receive-buffer integration.
+  Send batching (`sendmmsg`), buffer reuse in the stream bridge, and an
+  allocation-counter regression harness also remain.
 - **Connection statistics API** (RTT, congestion window, loss counters) —
   partially exposed today via swift-metrics at connection close; a live
   per-connection query needs upstream surface.

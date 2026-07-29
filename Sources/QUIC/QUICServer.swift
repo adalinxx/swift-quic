@@ -144,7 +144,7 @@ public final class QUICServer: Sendable {
         let metrics = configuration.metrics
 
         let (udpChannel, handlerHandle) = try await DatagramBootstrap(group: eventLoopGroup)
-            .channelOption(.datagramVectorReadMessageCount, value: 8)            .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
+            .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
             .bind(host: host, port: port) { channel in
                 channel.eventLoop.makeCompletedFuture {
                     let handler = QUICHandler(

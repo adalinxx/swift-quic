@@ -7,9 +7,9 @@
   `ResponseWriter.setTrailers(_:)`, `RequestBodyWriter.finish(trailers:)`, and
   `HTTP3IncomingBody.trailers` (available once the body is consumed). Tested for
   collected responses, streaming responses, and request trailers.
-- **Datagram vectored reads**: every UDP socket now enables NIO's
-  `datagramVectorReadMessageCount` (batched `recvmmsg`) to cut per-packet
-  syscall overhead on busy servers. See BENCHMARKS.md.
+- **Datagram receive batching (`recvmmsg`)** was attempted and **reverted**:
+  it measured neutral on loopback and broke the Linux datagram path (caught by
+  Linux CI). Needs deeper NIOQUIC integration — see BENCHMARKS.md / ROADMAP.md.
 - **WebTransport** and **HTTP/3 server push** were evaluated and are blocked on
   upstream swift-nio-http3 (no H3 datagrams / WebTransport settings; no
   server-side push creation). Precise gap analysis in

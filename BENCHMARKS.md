@@ -37,18 +37,18 @@ Notes:
   echo figure several-fold. Measure on an otherwise-idle machine and only
   compare runs taken back-to-back.
 
-## Datagram batching (recvmmsg)
+## Datagram batching (recvmmsg) — investigated, not shipped
 
-All UDP sockets enable NIO's vectored datagram reads
-(`datagramVectorReadMessageCount = 8`), so the kernel can hand up to 8
-datagrams per `recvmmsg` syscall. This reduces per-packet syscall overhead on
-**busy servers handling many connections/packets**; a single-connection
-loopback microbench is syscall-light and shows it as neutral (measured within
-run-to-run noise), which is expected — the win is in packet-rate-bound
-multi-flow scenarios the loopback bench does not model.
+Enabling NIO's vectored datagram reads (`datagramVectorReadMessageCount`) was
+attempted but **reverted**: it measured as neutral on the loopback microbench
+*and* broke the datagram receive path on Linux (every handshake timed out —
+caught by the Linux CI job). Batched `recvmmsg` needs deeper integration with
+NIOQUIC's receive-buffer handling before it can be enabled safely; tracked in
+[ROADMAP.md](ROADMAP.md).
 
 ## Known optimization opportunities
 
-Tracked in [ROADMAP.md](ROADMAP.md): send-side batching (`sendmmsg`), buffer
-reuse in the stream bridge, and an allocation-counter regression harness
-(swift-nio's `run-allocation-counter.sh` framework, still to be wired in).
+Tracked in [ROADMAP.md](ROADMAP.md): datagram receive batching (`recvmmsg`,
+needs NIOQUIC integration), send-side batching (`sendmmsg`), buffer reuse in
+the stream bridge, and an allocation-counter regression harness (swift-nio's
+`run-allocation-counter.sh` framework, still to be wired in).
