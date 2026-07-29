@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **WebTransport foundation**: RFC 9297 HTTP/3 datagram and capsule wire
+  codecs plus RFC 9000 QUIC variable-length integers (`HTTP3DatagramCodec`,
+  `QUICVarint`), with 9 unit tests including the RFC 9000 § A.1 known-answer
+  vector. This is the framing layer WebTransport (and MASQUE) build on;
+  connection-channel datagram routing and extended-CONNECT session lifecycle
+  are the remaining pieces (ROADMAP.md, docs/upstream-issues/04).
+
 ## 0.6.0 — 2026-07-29
 
 - **Datagram receive batching (`recvmmsg`)**, now correct: all UDP sockets
