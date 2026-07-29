@@ -37,6 +37,12 @@ public struct HTTP3IncomingBody<Part: HTTP3BodyPart>: AsyncSequence, Sendable {
         AsyncIterator(reader: self.reader)
     }
 
+    /// Trailer fields received at the end of the message. Non-`nil` only after
+    /// the body has been fully consumed.
+    public var trailers: HTTPFields? {
+        self.reader.capturedTrailers
+    }
+
     public struct AsyncIterator: AsyncIteratorProtocol {
         private let reader: PartReader<Part>
 
@@ -59,6 +65,10 @@ public protocol HTTP3BodyPart: Sendable {
     static func body(_ buffer: ByteBuffer) -> Self
     /// The body payload if this part is a body chunk, else `nil`.
     var bodyChunk: ByteBuffer? { get }
+    /// Whether this part is the message end.
+    var isEnd: Bool { get }
+    /// The trailer fields carried by the message end, if any.
+    var endTrailers: HTTPFields? { get }
 }
 
 extension HTTPRequestPart: HTTP3BodyPart {
@@ -66,11 +76,27 @@ extension HTTPRequestPart: HTTP3BodyPart {
         if case .body(let buffer) = self { return buffer }
         return nil
     }
+    public var isEnd: Bool {
+        if case .end = self { return true }
+        return false
+    }
+    public var endTrailers: HTTPFields? {
+        if case .end(let fields) = self { return fields }
+        return nil
+    }
 }
 
 extension HTTPResponsePart: HTTP3BodyPart {
     public var bodyChunk: ByteBuffer? {
         if case .body(let buffer) = self { return buffer }
+        return nil
+    }
+    public var isEnd: Bool {
+        if case .end = self { return true }
+        return false
+    }
+    public var endTrailers: HTTPFields? {
+        if case .end(let fields) = self { return fields }
         return nil
     }
 }
@@ -83,6 +109,7 @@ final class PartReader<Part: HTTP3BodyPart>: @unchecked Sendable {
     struct Storage {
         var iterator: NIOAsyncChannelInboundStream<Part>.AsyncIterator
         var finished = false
+        var trailers: HTTPFields?
     }
 
     init(iterator: NIOAsyncChannelInboundStream<Part>.AsyncIterator) {
@@ -107,11 +134,20 @@ final class PartReader<Part: HTTP3BodyPart>: @unchecked Sendable {
             if let chunk = part.bodyChunk {
                 return chunk
             }
+            if part.isEnd, let trailers = part.endTrailers {
+                self.storage.withLockedValue { $0.trailers = trailers }
+            }
             // `.head`: skip and keep reading. `.end`: the next `next()` returns
             // nil and the loop exits.
         }
         self.storage.withLockedValue { $0.finished = true }
         return nil
+    }
+
+    /// The trailer fields received at the end of the message, available once
+    /// the body has been fully read.
+    var capturedTrailers: HTTPFields? {
+        self.storage.withLockedValue { $0.trailers }
     }
 
     /// Consumes any remaining parts so the stream can close cleanly. Best

@@ -84,7 +84,7 @@ public enum HTTP3Client {
         }
 
         let (udpChannel, multiplexer) = try await DatagramBootstrap(group: eventLoopGroup)
-            .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
+            .channelOption(.datagramVectorReadMessageCount, value: 8)            .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
             .bind(host: bindHost, port: 0) {
                 channel -> EventLoopFuture<(
                     any Channel, HTTP3ClientConnectionMultiplexer<QUICConnectionCreator, QUICStreamCreator>
@@ -175,6 +175,7 @@ public enum HTTP3Client {
                 var status: HTTPResponse.Status?
                 var headerFields = HTTPFields()
                 var collected = ByteBuffer()
+                var trailers = HTTPFields()
                 for try await part in inbound {
                     switch part {
                     case .head(let response):
@@ -185,14 +186,16 @@ public enum HTTP3Client {
                             throw HTTP3ClientError(code: .responseTooLarge)
                         }
                         collected.writeBuffer(&buffer)
-                    case .end:
-                        break
+                    case .end(let endTrailers):
+                        if let endTrailers { trailers = endTrailers }
                     }
                 }
                 guard let status else {
                     throw HTTP3ClientError(code: .malformedResponse)
                 }
-                return HTTP3Response(status: status, headerFields: headerFields, body: collected)
+                return HTTP3Response(
+                    status: status, headerFields: headerFields, body: collected, trailers: trailers
+                )
             }
         }
     }

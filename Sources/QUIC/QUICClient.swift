@@ -160,7 +160,7 @@ public enum QUICClient {
             // Binding a specific local port typically means the caller wants to
             // reuse a known mapping (NAT hole punching); allow prompt rebind.
             udpChannel = try await DatagramBootstrap(group: eventLoopGroup)
-                .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
+            .channelOption(.datagramVectorReadMessageCount, value: 8)                .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
                 .bind(to: localAddress, channelInitializer: channelInitializer)
         } else {
             let bindHost: String
@@ -171,7 +171,7 @@ public enum QUICClient {
                 bindHost = "0.0.0.0"
             }
             udpChannel = try await DatagramBootstrap(group: eventLoopGroup)
-                .bind(host: bindHost, port: 0, channelInitializer: channelInitializer)
+            .channelOption(.datagramVectorReadMessageCount, value: 8)                .bind(host: bindHost, port: 0, channelInitializer: channelInitializer)
         }
 
         do {

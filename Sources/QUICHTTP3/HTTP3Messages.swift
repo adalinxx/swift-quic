@@ -66,16 +66,20 @@ public struct HTTP3Response: Sendable {
     public var headerFields: HTTPFields
     /// The response body.
     public var body: ByteBuffer
+    /// Trailer fields sent after the body (empty for no trailers).
+    public var trailers: HTTPFields
 
     /// Creates an HTTP/3 response.
     public init(
         status: HTTPResponse.Status = .ok,
         headerFields: HTTPFields = [:],
-        body: ByteBuffer = ByteBuffer()
+        body: ByteBuffer = ByteBuffer(),
+        trailers: HTTPFields = [:]
     ) {
         self.status = status
         self.headerFields = headerFields
         self.body = body
+        self.trailers = trailers
     }
 
     /// Creates a response with a UTF-8 string body.
@@ -96,6 +100,8 @@ public struct HTTP3ServerRequest: Sendable {
     public let head: HTTPRequest
     /// The collected request body.
     public let body: ByteBuffer
+    /// Trailer fields received after the body (empty for none).
+    public let trailers: HTTPFields
 
     /// The request method.
     public var method: HTTPRequest.Method { self.head.method }
@@ -104,9 +110,10 @@ public struct HTTP3ServerRequest: Sendable {
     /// The header fields.
     public var headerFields: HTTPFields { self.head.headerFields }
 
-    init(head: HTTPRequest, body: ByteBuffer) {
+    init(head: HTTPRequest, body: ByteBuffer, trailers: HTTPFields = [:]) {
         self.head = head
         self.body = body
+        self.trailers = trailers
     }
 }
 

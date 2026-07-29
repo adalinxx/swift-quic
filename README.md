@@ -18,8 +18,8 @@ verification, sensible transport parameters).
   product) with async request/response over
   [swift-nio-http3](https://github.com/apple/swift-nio-http3), including
   **incremental streaming bodies** in both directions (uploads, downloads,
-  SSE-style responses). Verified against production servers (fetches
-  `cloudflare-quic.com` over HTTP/3).
+  SSE-style responses) and **trailer fields**. Verified against production
+  servers (fetches `cloudflare-quic.com` over HTTP/3).
 - **Streams**: bidirectional and unidirectional, client- and server-initiated,
   with flow-control-aware backpressure on reads and writes.
 - **Unreliable datagrams** (RFC 9221): `sendDatagram(_:)` and an async

@@ -32,8 +32,23 @@ Notes:
   like on the same machine.
 - CI does not run benchmarks: shared runners are far too noisy for regression
   detection. Run locally before and after performance-relevant changes.
+- Bulk loopback throughput is **highly sensitive to machine load** — a busy
+  workstation (background compiles, containers) can drop the single-connection
+  echo figure several-fold. Measure on an otherwise-idle machine and only
+  compare runs taken back-to-back.
+
+## Datagram batching (recvmmsg)
+
+All UDP sockets enable NIO's vectored datagram reads
+(`datagramVectorReadMessageCount = 8`), so the kernel can hand up to 8
+datagrams per `recvmmsg` syscall. This reduces per-packet syscall overhead on
+**busy servers handling many connections/packets**; a single-connection
+loopback microbench is syscall-light and shows it as neutral (measured within
+run-to-run noise), which is expected — the win is in packet-rate-bound
+multi-flow scenarios the loopback bench does not model.
 
 ## Known optimization opportunities
 
-Tracked in [ROADMAP.md](ROADMAP.md): UDP batching (`sendmmsg`/`recvmmsg`),
-buffer reuse in the stream bridge, and allocation-counter regression tests.
+Tracked in [ROADMAP.md](ROADMAP.md): send-side batching (`sendmmsg`), buffer
+reuse in the stream bridge, and an allocation-counter regression harness
+(swift-nio's `run-allocation-counter.sh` framework, still to be wired in).
