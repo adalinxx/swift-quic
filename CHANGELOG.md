@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0 — 2026-07-29
+
+- **HTTP/3 (RFC 9114)**: new `QUICHTTP3` product with `HTTP3Server` and
+  `HTTP3Client`, async request/response over swift-nio-http3. GET/POST,
+  headers, status codes, and multi-MiB bodies covered by end-to-end tests;
+  verified against a production server (`cloudflare-quic.com`). Demo:
+  `swift run quic-h3-demo`.
+- Depends on a maintained fork of swift-nio-http3 (`adalinxx`, tag
+  `0.1.0-swiftquic.1`) that exposes the `HTTP3`/`QPACK` products and pins the
+  swift-nio-quic fork — an upstream PR to expose those products is planned.
+
+An optional `localAddress` on `QUICClient.connect` (for NAT hole punching) is
+proposed separately in PR #1.
+
 ## 0.2.0 — 2026-07-29
 
 - **Versioned releases unblocked**: the maintained forks now carry prerelease

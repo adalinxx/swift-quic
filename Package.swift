@@ -26,7 +26,8 @@ let package = Package(
         .visionOS(.v26),
     ],
     products: [
-        .library(name: "QUIC", targets: ["QUIC"])
+        .library(name: "QUIC", targets: ["QUIC"]),
+        .library(name: "QUICHTTP3", targets: ["QUICHTTP3"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-nio", from: "2.92.0"),
@@ -43,6 +44,9 @@ let package = Package(
         .package(url: "https://github.com/adalinxx/swift-network-evolution", exact: "0.1.2-swiftquic.1"),
         .package(url: "https://github.com/apple/swift-nio-quic-helpers.git", .upToNextMinor(from: "0.1.0")),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.0"),
+        .package(url: "https://github.com/adalinxx/swift-nio-http3", exact: "0.1.0-swiftquic.1"),
+        .package(url: "https://github.com/apple/swift-http-types", from: "1.4.0"),
+        .package(url: "https://github.com/apple/swift-nio-extras", from: "1.30.0"),
     ],
     targets: [
         .target(
@@ -57,6 +61,22 @@ let package = Package(
                 .product(name: "NIOQUIC", package: "swift-nio-quic"),
                 .product(name: "NIOQUICHelpers", package: "swift-nio-quic-helpers"),
                 .product(name: "SwiftNetwork", package: "swift-network-evolution"),
+            ],
+            swiftSettings: swiftSettings
+        ),
+        .target(
+            name: "QUICHTTP3",
+            dependencies: [
+                .target(name: "QUIC"),
+                .product(name: "NIOCore", package: "swift-nio"),
+                .product(name: "NIOPosix", package: "swift-nio"),
+                .product(name: "Logging", package: "swift-log"),
+                .product(name: "NIOQUIC", package: "swift-nio-quic"),
+                .product(name: "NIOQUICHelpers", package: "swift-nio-quic-helpers"),
+                .product(name: "NIOHTTP3", package: "swift-nio-http3"),
+                .product(name: "HTTP3", package: "swift-nio-http3"),
+                .product(name: "HTTPTypes", package: "swift-http-types"),
+                .product(name: "NIOHTTPTypes", package: "swift-nio-extras"),
             ],
             swiftSettings: swiftSettings
         ),
@@ -78,6 +98,16 @@ let package = Package(
             swiftSettings: swiftSettings
         ),
         .executableTarget(
+            name: "quic-h3-demo",
+            dependencies: [
+                .target(name: "QUIC"),
+                .target(name: "QUICHTTP3"),
+                .product(name: "Logging", package: "swift-log"),
+                .product(name: "HTTPTypes", package: "swift-http-types"),
+            ],
+            swiftSettings: swiftSettings
+        ),
+        .executableTarget(
             name: "quic-interop",
             dependencies: [
                 .target(name: "QUIC"),
@@ -90,6 +120,17 @@ let package = Package(
             name: "QUICTests",
             dependencies: [
                 .target(name: "QUIC")
+            ],
+            swiftSettings: swiftSettings
+        ),
+        .testTarget(
+            name: "QUICHTTP3Tests",
+            dependencies: [
+                .target(name: "QUIC"),
+                .target(name: "QUICHTTP3"),
+                .product(name: "NIOCore", package: "swift-nio"),
+                .product(name: "Logging", package: "swift-log"),
+                .product(name: "HTTPTypes", package: "swift-http-types"),
             ],
             swiftSettings: swiftSettings
         ),

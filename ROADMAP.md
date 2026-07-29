@@ -23,22 +23,28 @@ split by who can move each item.
   ([interop/](interop/)).
 - Client connect timeout (default 10 s) with black-hole test coverage.
 - **Versioned releases**: fork prerelease tags make the dependency chain
-  version-stable; consume via `from: "0.2.0"`.
+  version-stable; consume via `from: "0.3.0"`.
+- **HTTP/3** (RFC 9114): the `QUICHTTP3` product (`HTTP3Server`/`HTTP3Client`)
+  on swift-nio-http3, end-to-end tested and verified against
+  `cloudflare-quic.com`.
 
 ## In progress (ours to do)
 
 - **Interop matrix validation**: bidirectional hash-verified transfers
-  against quic-go (as server) and quiche (as client) already pass — see
+  against quic-go (as server) and quiche (as client) already pass, and the
+  HTTP/3 client interoperates with `cloudflare-quic.com` — see
   [interop/](interop/). Remaining: the full official runner matrix (needs its
   ns-3 simulator), more implementations, and verifying RSA server identities
   (the runner's default certs) against the SwiftTLS signing path.
 - **Performance**: UDP batching (`sendmmsg`/`recvmmsg`) exploration, buffer
   reuse in the stream bridge, allocation-counter regression tests.
-- **HTTP/3 convenience layer** on top of streams (upstream has
-  swift-nio-http3 integration to build on).
+- **HTTP/3 streaming bodies**: the current layer collects request/response
+  bodies (the common case); incremental body streaming and server push are
+  the next additions.
 - **Connection statistics API** (RTT, congestion window, loss counters) —
   partially exposed today via swift-metrics at connection close; a live
   per-connection query needs upstream surface.
+- **Local bind address for hole punching**: proposed in PR #1.
 
 ## Blocked on the upstream stack (apple/swift-nio-quic & swift-network-evolution)
 

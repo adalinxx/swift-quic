@@ -37,7 +37,7 @@ extension QUICCertificateVerification {
 extension QUICServer.Configuration {
     /// Maps to the underlying NIOQUIC configuration plus the TLS authenticator
     /// (which carries any in-memory certificates).
-    func makeNIOQUICConfiguration() throws -> (NIOQUIC.QUICConfiguration, Authenticator?) {
+    package func makeNIOQUICConfiguration() throws -> (NIOQUIC.QUICConfiguration, Authenticator?) {
         guard !self.applicationProtocols.isEmpty else {
             throw QUICConfigurationError("applicationProtocols must not be empty")
         }
@@ -98,7 +98,7 @@ extension QUICServer.Configuration {
 @available(macOS 26, iOS 26, tvOS 26, watchOS 26, visionOS 26, *)
 extension QUICClient.Configuration {
     /// Maps to the underlying NIOQUIC configuration.
-    func makeNIOQUICConfiguration() throws -> NIOQUIC.QUICConfiguration {
+    package func makeNIOQUICConfiguration() throws -> NIOQUIC.QUICConfiguration {
         guard !self.applicationProtocols.isEmpty else {
             throw QUICConfigurationError("applicationProtocols must not be empty")
         }
@@ -140,7 +140,7 @@ extension QUICClient.Configuration {
 
     /// Builds the certificate verifier for x509 trust configurations.
     /// Returns `nil` for raw-public-key trust (handled inside NIOQUIC).
-    func makeAsyncVerifier(eventLoop: any EventLoop) throws -> AsyncVerifier? {
+    package func makeAsyncVerifier(eventLoop: any EventLoop) throws -> AsyncVerifier? {
         let verification = self.certificateVerification.nioqVerification
         switch self.trustRoots.backing {
         case .system:
