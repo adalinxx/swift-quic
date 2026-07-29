@@ -143,4 +143,15 @@ struct WriteGateTests {
             try gate.checkSendable()
         }
     }
+
+    @Test
+    func neverWritableSurvivesClosure() {
+        // A receive-only stream keeps reporting the direction error even
+        // after the channel closes.
+        let gate = WriteGate(writable: false)
+        gate.markClosed()
+        #expect(throws: QUICStreamError(code: .notWritable)) {
+            try gate.checkSendable()
+        }
+    }
 }

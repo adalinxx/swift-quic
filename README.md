@@ -1,5 +1,9 @@
 # swift-quic
 
+[![CI](https://github.com/adalinxx/swift-quic/actions/workflows/ci.yml/badge.svg)](https://github.com/adalinxx/swift-quic/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-DocC-blue)](https://adalinxx.github.io/swift-quic/documentation/quic/)
+[![License](https://img.shields.io/badge/license-Apache--2.0-lightgrey)](LICENSE.txt)
+
 An easy-to-use, fully-tested Swift QUIC library built on Apple's
 [swift-nio-quic](https://github.com/apple/swift-nio-quic).
 
@@ -28,9 +32,9 @@ verification, sensible transport parameters).
 
 ## Requirements
 
-- Swift 6.3+
-- macOS 26+ (or other 26-era Apple platforms) — inherited from the underlying
-  `swift-network-evolution` QUIC implementation
+- Swift 6.3
+- macOS 26+ (or other 26-era Apple platforms) **or Linux** (tested in
+  `swift:6.3` containers; both run the full test suite in CI)
 - Build with `SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA=1` while the
   dependency tree uses a swift-crypto beta
 
@@ -117,12 +121,29 @@ SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA=1 swift run quic-echo
 SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA=1 swift test
 ```
 
-The test suite includes unit tests for the configuration surface plus
-end-to-end integration tests over loopback UDP: stream echoes, concurrent
-streams and connections, 8 MiB flow-control-crossing transfers, half-close,
-`RESET_STREAM`/`STOP_SENDING` semantics, datagram round trips and error cases,
-TLS trust failures, ALPN mismatch, post-quantum key exchange, and graceful
-shutdown.
+The suite (53 tests, run on macOS and Linux in CI) includes unit tests for
+the configuration surface plus end-to-end integration tests over loopback
+UDP: stream echoes, concurrent streams and connections, 8 MiB
+flow-control-crossing transfers, half-close, `RESET_STREAM`/`STOP_SENDING`
+semantics, datagram round trips and error cases, TLS trust failures, ALPN
+mismatch, post-quantum key exchange, and graceful shutdown — plus
+**adverse-network tests** that push traffic through a seeded UDP proxy
+injecting 5–20% loss, reordering, and duplication. A 60-second soak test runs
+nightly.
+
+## Benchmarks, interop, roadmap
+
+- [BENCHMARKS.md](BENCHMARKS.md) — loopback numbers and how to reproduce them
+  (`swift run -c release quic-bench`).
+- [interop/](interop/) — a [QUIC Interop Runner](https://github.com/quic-interop/quic-interop-runner)
+  endpoint speaking `hq-interop` (experimental).
+- [ROADMAP.md](ROADMAP.md) — an honest map of what's done, what's next, and
+  what's blocked on the upstream stack (0-RTT, migration, BBR, mTLS, semver
+  releases).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Security reports: [SECURITY.md](SECURITY.md).
 
 ## Architecture
 

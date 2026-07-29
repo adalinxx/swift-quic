@@ -1,0 +1,22 @@
+name: Feature request
+description: Propose an API or capability
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: sketch
+    attributes:
+      label: API sketch
+      description: What would using it look like?
+  - type: checkboxes
+    id: roadmap
+    attributes:
+      label: Roadmap check
+      options:
+        - label: I checked ROADMAP.md — this isn't already listed as blocked on the upstream QUIC stack.
+          required: true

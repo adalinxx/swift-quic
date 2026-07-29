@@ -1,0 +1,37 @@
+name: Bug report
+description: Something doesn't work the way it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: Minimal code or steps. A failing test against the harness in Tests/QUICIntegrationTests is gold.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: swift-quic revision
+      placeholder: main @ <commit>
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform and Swift version
+      placeholder: macOS 26.3 / Swift 6.3.3, or Ubuntu 24.04 / swift:6.3
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Set the configuration's logger to .trace level for transport logs if relevant.
