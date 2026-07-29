@@ -39,6 +39,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-asn1.git", from: "1.7.0"),
         .package(url: "https://github.com/apple/swift-network-evolution", .upToNextMinor(from: "0.1.1")),
         .package(url: "https://github.com/apple/swift-nio-quic-helpers.git", .upToNextMinor(from: "0.1.0")),
+        .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.0"),
     ],
     targets: [
         .target(
@@ -58,6 +59,23 @@ let package = Package(
         ),
         .executableTarget(
             name: "quic-echo",
+            dependencies: [
+                .target(name: "QUIC"),
+                .product(name: "NIOCore", package: "swift-nio"),
+                .product(name: "Logging", package: "swift-log"),
+            ],
+            swiftSettings: swiftSettings
+        ),
+        .executableTarget(
+            name: "quic-bench",
+            dependencies: [
+                .target(name: "QUIC"),
+                .product(name: "Logging", package: "swift-log"),
+            ],
+            swiftSettings: swiftSettings
+        ),
+        .executableTarget(
+            name: "quic-interop",
             dependencies: [
                 .target(name: "QUIC"),
                 .product(name: "NIOCore", package: "swift-nio"),

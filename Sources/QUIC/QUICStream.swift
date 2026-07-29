@@ -279,6 +279,11 @@ final class WriteGate: Sendable {
     }
 
     func markClosed() {
-        self.state.withLock { $0 = .closed }
+        self.state.withLock { state in
+            // A receive-only stream stays `.neverWritable` even once closed:
+            // writing to it is a direction error, not a lifecycle error.
+            if case .neverWritable = state { return }
+            state = .closed
+        }
     }
 }
