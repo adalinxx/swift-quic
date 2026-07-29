@@ -36,11 +36,11 @@ let package = Package(
         // Pinned to the adalinxx fork: upstream main (19fd6ac) plus three fixes
         // we have prepared as upstream PRs (typed reset errors, datagram write
         // promise completion, no-trap teardown). See docs/upstream-issues/.
-        .package(url: "https://github.com/adalinxx/swift-nio-quic", revision: "c1246a13a84ebadb0b1e76c3e177a9aa35713bd2"),
+        .package(url: "https://github.com/adalinxx/swift-nio-quic", exact: "0.2.0-swiftquic.1"),
         .package(url: "https://github.com/apple/swift-asn1.git", from: "1.7.0"),
         // Same identity/URL as the swift-nio-quic fork's dependency:
         // 0.1.1 plus the teardown-crash fix.
-        .package(url: "https://github.com/adalinxx/swift-network-evolution", revision: "d6f9fe73e95ba59d7f1fe354f6d61c99e54f3484"),
+        .package(url: "https://github.com/adalinxx/swift-network-evolution", exact: "0.1.2-swiftquic.1"),
         .package(url: "https://github.com/apple/swift-nio-quic-helpers.git", .upToNextMinor(from: "0.1.0")),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.0"),
     ],

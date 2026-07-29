@@ -1,5 +1,5 @@
 {
-  "originHash" : "cd30fb557648d3272f6d779504d4aede6c572c1f9e4b9d50a60188474d43192c",
+  "originHash" : "4190dcd5b1c17d4d9ad813ef910d60c880f352a5a0bb5f2f883fc0b86a620b09",
   "pins" : [
     {
       "identity" : "swift-asn1",
@@ -87,7 +87,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/adalinxx/swift-network-evolution",
       "state" : {
-        "revision" : "d6f9fe73e95ba59d7f1fe354f6d61c99e54f3484"
+        "revision" : "d6f9fe73e95ba59d7f1fe354f6d61c99e54f3484",
+        "version" : "0.1.2-swiftquic.1"
       }
     },
     {
@@ -104,7 +105,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/adalinxx/swift-nio-quic",
       "state" : {
-        "revision" : "c1246a13a84ebadb0b1e76c3e177a9aa35713bd2"
+        "revision" : "493143aa5dc5ab7677df344a32e3335fa5674b1c",
+        "version" : "0.2.0-swiftquic.1"
       }
     },
     {
