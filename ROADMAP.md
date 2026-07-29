@@ -31,7 +31,15 @@ split by who can move each item.
   both directions, **trailer fields** (send + receive), end-to-end tested and
   verified against `cloudflare-quic.com`.
 
+- **WebTransport** (draft-ietf-webtrans-http3): sessions over extended CONNECT
+  and datagrams (`WebTransportServer`/`WebTransportClient`), end-to-end tested.
+
 ## In progress (ours to do)
+
+- **WebTransport streams**: type-prefixed QUIC bi/unidirectional streams
+  (`0x41`/`0x54` + session ID) need an inbound stream-type router installed
+  ahead of HTTP/3 (to divert WT streams from H3 request handling). Sessions and
+  datagrams are done; this is the remaining WebTransport sub-feature.
 
 - **Interop matrix validation**: bidirectional hash-verified transfers
   against quic-go (as server) and quiche (as client) already pass, and the
@@ -59,7 +67,6 @@ split by who can move each item.
 | mTLS (client certificates) | apple/swift-nio-quic#5. |
 | `SSLKEYLOGFILE` output | apple/swift-nio-quic#7 (`setKeylogPath` is a TODO); our config knob is plumbed and documented as a no-op. |
 | Stream priorities (RFC 9218 scheduling) | Requires upstream write-scheduler control. |
-| **WebTransport** | In progress, not blocked: the RFC 9297 datagram/capsule wire codec is implemented and tested (`HTTP3DatagramCodec`, `QUICVarint`), and H3 settings are extensible. Remaining: connection-channel datagram routing and extended-CONNECT session lifecycle. See [docs/upstream-issues/04](docs/upstream-issues/04-webtransport-and-server-push-gaps.md). |
 | **HTTP/3 server push** | swift-nio-http3 async interface has no server-side push creation (upstream TODO); also ecosystem-deprecated. Same doc as above. |
 | Thread Sanitizer CI | The Swift 6.3 compiler crashes (signal 6) compiling the dependency tree with `-sanitize=thread`; retry on newer toolchains. |
 

@@ -20,6 +20,9 @@ verification, sensible transport parameters).
   **incremental streaming bodies** in both directions (uploads, downloads,
   SSE-style responses) and **trailer fields**. Verified against production
   servers (fetches `cloudflare-quic.com` over HTTP/3).
+- **WebTransport** (draft-ietf-webtrans-http3): `WebTransportServer` /
+  `WebTransportClient` with sessions over HTTP/3 extended CONNECT and
+  datagrams, end-to-end tested. (WebTransport streams are in progress.)
 - **Streams**: bidirectional and unidirectional, client- and server-initiated,
   with flow-control-aware backpressure on reads and writes.
 - **Unreliable datagrams** (RFC 9221): `sendDatagram(_:)` and an async
