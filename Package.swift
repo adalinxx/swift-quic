@@ -33,11 +33,14 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-log", from: "1.12.1"),
         .package(url: "https://github.com/apple/swift-certificates.git", from: "1.19.3"),
         .package(url: "https://github.com/apple/swift-crypto.git", exact: "5.0.0-beta.2"),
-        // Pinned to a revision: the datagram (RFC 9221) support and in-memory
-        // trust-root APIs this library builds on are newer than the 0.1.0 tag.
-        .package(url: "https://github.com/apple/swift-nio-quic", revision: "19fd6ac5de463717fb1d957381a91ff96f5623b5"),
+        // Pinned to the adalinxx fork: upstream main (19fd6ac) plus three fixes
+        // we have prepared as upstream PRs (typed reset errors, datagram write
+        // promise completion, no-trap teardown). See docs/upstream-issues/.
+        .package(url: "https://github.com/adalinxx/swift-nio-quic", revision: "8f1a68b713f96926f38267c1927661ab1cfcdb23"),
         .package(url: "https://github.com/apple/swift-asn1.git", from: "1.7.0"),
-        .package(url: "https://github.com/apple/swift-network-evolution", .upToNextMinor(from: "0.1.1")),
+        // Same identity/URL as the swift-nio-quic fork's dependency:
+        // 0.1.1 plus the teardown-crash fix.
+        .package(url: "https://github.com/adalinxx/swift-network-evolution", revision: "338396e0efb7d31ddd050031100299ab791f55a7"),
         .package(url: "https://github.com/apple/swift-nio-quic-helpers.git", .upToNextMinor(from: "0.1.0")),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.0"),
     ],

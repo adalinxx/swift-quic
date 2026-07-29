@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- The package now pins maintained forks of `swift-nio-quic` and
+  `swift-network-evolution` carrying fixes for three upstream bugs we found
+  (typed reset errors, datagram write-promise completion on attach failure,
+  and a process crash when operations race TLS-failure teardown). Upstream
+  PRs are prepared; the forks retire once Apple merges equivalent fixes.
+  See ROADMAP.md and docs/upstream-issues/.
+
 ## 0.1.0 — 2026-07-28
 
 Initial release.
