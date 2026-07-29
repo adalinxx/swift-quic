@@ -42,7 +42,7 @@ verification, sensible transport parameters).
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/adalinxx/swift-quic", branch: "main"),
+    .package(url: "https://github.com/adalinxx/swift-quic", from: "0.2.0"),
 ]
 // target dependencies: .product(name: "QUIC", package: "swift-quic")
 ```
@@ -121,7 +121,7 @@ SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA=1 swift run quic-echo
 SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA=1 swift test
 ```
 
-The suite (53 tests, run on macOS and Linux in CI) includes unit tests for
+The suite (56 tests, run on macOS and Linux in CI) includes unit tests for
 the configuration surface plus end-to-end integration tests over loopback
 UDP: stream echoes, concurrent streams and connections, 8 MiB
 flow-control-crossing transfers, half-close, `RESET_STREAM`/`STOP_SENDING`
@@ -131,12 +131,19 @@ mismatch, post-quantum key exchange, and graceful shutdown — plus
 injecting 5–20% loss, reordering, and duplication. A 60-second soak test runs
 nightly.
 
+## Production use
+
+See [docs/production-guide.md](docs/production-guide.md) for a candid
+readiness statement, configuration checklist (TLS, timeouts, flow control,
+address validation), and operational practices.
+
 ## Benchmarks, interop, roadmap
 
 - [BENCHMARKS.md](BENCHMARKS.md) — loopback numbers and how to reproduce them
   (`swift run -c release quic-bench`).
 - [interop/](interop/) — a [QUIC Interop Runner](https://github.com/quic-interop/quic-interop-runner)
-  endpoint speaking `hq-interop` (experimental).
+  endpoint speaking `hq-interop`, with hash-verified transfers against
+  quic-go and quiche.
 - [ROADMAP.md](ROADMAP.md) — an honest map of what's done, what's next, and
   what's blocked on the upstream stack (0-RTT, migration, BBR, mTLS, semver
   releases).
