@@ -11,6 +11,7 @@
 import NIOCore
 import NIOQUIC
 import NIOQUICHelpers
+import Synchronization
 
 /// An established QUIC connection.
 ///
@@ -44,6 +45,23 @@ public final class QUICConnection: Sendable {
     /// connection.
     private let ownedUDPChannel: (any Channel)?
 
+    /// Flips once the connection channel has fully closed. Used to fail new
+    /// operations early — forwarding them into a torn-down connection can
+    /// crash the underlying stack (see docs/upstream-issues/03).
+    private let hasClosed = CloseFlag()
+
+    private final class CloseFlag: Sendable {
+        private let state = Mutex<Bool>(false)
+
+        var isSet: Bool {
+            self.state.withLock { $0 }
+        }
+
+        func set() {
+            self.state.withLock { $0 = true }
+        }
+    }
+
     init(
         channel: any Channel,
         creator: NIOQUIC.QUICStreamCreator,
@@ -58,6 +76,17 @@ public final class QUICConnection: Sendable {
         self.incomingStreams = incomingStreams
         self.datagrams = datagrams
         self.ownedUDPChannel = ownedUDPChannel
+
+        let hasClosed = self.hasClosed
+        channel.closeFuture.whenComplete { _ in
+            hasClosed.set()
+        }
+    }
+
+    private func checkNotClosed() throws {
+        if self.hasClosed.isSet {
+            throw QUICConnectionError(code: .closed)
+        }
     }
 
     deinit {
@@ -78,6 +107,7 @@ public final class QUICConnection: Sendable {
 
     /// Opens a new bidirectional stream.
     public func openBidirectionalStream() async throws -> QUICStream {
+        try self.checkNotClosed()
         let role = self.role
         do {
             return try await self.creator.createBidirectionalStream { parameters in
@@ -94,6 +124,7 @@ public final class QUICConnection: Sendable {
 
     /// Opens a new unidirectional (send-only) stream.
     public func openUnidirectionalStream() async throws -> QUICStream {
+        try self.checkNotClosed()
         let role = self.role
         do {
             return try await self.creator.createUnidirectionalStream { parameters in
@@ -117,6 +148,7 @@ public final class QUICConnection: Sendable {
     ///   datagrams, the payload exceeds the peer's advertised maximum size, or
     ///   the connection is closed.
     public func sendDatagram(_ datagram: ByteBuffer) async throws {
+        try self.checkNotClosed()
         do {
             let promise = self.channel.eventLoop.makePromise(of: Void.self)
             self.channel.writeAndFlush(datagram, promise: promise)

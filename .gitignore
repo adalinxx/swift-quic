@@ -3,3 +3,5 @@
 /vendor-swift-nio-quic/
 *.xcodeproj
 .swiftpm/
+core
+core.*
