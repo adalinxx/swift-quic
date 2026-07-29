@@ -14,6 +14,10 @@ verification, sensible transport parameters).
 
 ## Features
 
+- **HTTP/3** (RFC 9114): an `HTTP3Server` / `HTTP3Client` layer (the `QUICHTTP3`
+  product) with async request/response over
+  [swift-nio-http3](https://github.com/apple/swift-nio-http3). Verified against
+  production servers (fetches `cloudflare-quic.com` over HTTP/3).
 - **Streams**: bidirectional and unidirectional, client- and server-initiated,
   with flow-control-aware backpressure on reads and writes.
 - **Unreliable datagrams** (RFC 9221): `sendDatagram(_:)` and an async
@@ -96,6 +100,31 @@ for await datagram in connection.datagrams {
     print("got \(datagram.readableBytes) bytes")
 }
 ```
+
+### HTTP/3
+
+Add the `QUICHTTP3` product alongside `QUIC`, then:
+
+```swift
+import QUICHTTP3
+
+// Server
+let server = try await HTTP3Server.bind(
+    host: "0.0.0.0", port: 443,
+    configuration: .init(identity: .certificateChain(pemFile: "cert.pem", privateKeyPEMFile: "key.pem"))
+)
+try await server.run { request in
+    HTTP3Response(status: .ok, string: "you requested \(request.path)")
+}
+
+// Client
+try await HTTP3Client.withConnection(to: "example.com", port: 443, configuration: .init()) { connection in
+    let response = try await connection.get("/")
+    print(response.status, String(buffer: response.body))
+}
+```
+
+Run the demo with `swift run quic-h3-demo`.
 
 ### Development TLS in one line
 
