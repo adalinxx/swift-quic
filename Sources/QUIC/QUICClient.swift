@@ -104,12 +104,20 @@ public enum QUICClient {
     ///     SNI and certificate hostname verification.
     ///   - port: The server's UDP port.
     ///   - configuration: The client configuration.
+    ///   - localAddress: The local address to bind the UDP socket to. When
+    ///     `nil` (the default) the socket binds an ephemeral port on the
+    ///     wildcard host matching the server's address family. Set this to
+    ///     bind a specific local port — required for NAT hole punching, where
+    ///     the local mapping you advertise to the peer must correspond to the
+    ///     socket QUIC actually uses. When set, `SO_REUSEADDR` is enabled so a
+    ///     known port can be rebound promptly (e.g. after a STUN exchange).
     ///   - eventLoopGroup: The event loop group to run on. Defaults to the
     ///     shared singleton.
     public static func connect(
         to host: String,
         port: Int,
         configuration: Configuration,
+        localAddress: SocketAddress? = nil,
         eventLoopGroup: any EventLoopGroup = MultiThreadedEventLoopGroup.singleton
     ) async throws -> QUICConnection {
         let nioqConfiguration = try configuration.makeNIOQUICConfiguration()
@@ -118,43 +126,53 @@ public enum QUICClient {
         let logger = configuration.logger
         let metrics = configuration.metrics
 
-        let bindHost: String
-        switch remoteAddress {
-        case .v6:
-            bindHost = "::"
-        default:
-            bindHost = "0.0.0.0"
+        let channelInitializer: @Sendable (any Channel) -> EventLoopFuture<any Channel> = { channel in
+            channel.eventLoop.makeCompletedFuture {
+                let verifier = try configuration.makeAsyncVerifier(eventLoop: channel.eventLoop)
+                let handler = QUICHandler(
+                    channel: channel,
+                    quicConfiguration: nioqConfiguration,
+                    asyncVerifier: verifier,
+                    authenticator: nil,
+                    logger: logger,
+                    metrics: metrics,
+                    inboundConnectionInitializer: { connectionChannel, _ in
+                        // Clients do not accept inbound connections.
+                        connectionChannel.close()
+                    },
+                    inboundStreamInitializer: { streamChannel in
+                        streamChannel.eventLoop.makeFailedFuture(
+                            QUICConnectionError(
+                                code: .closed,
+                                message: "inbound stream on unknown client connection"
+                            )
+                        )
+                    },
+                    noMoreConnections: {}
+                )
+                try channel.pipeline.syncOperations.addHandler(handler)
+                return channel
+            }
         }
 
-        let udpChannel = try await DatagramBootstrap(group: eventLoopGroup)
-            .bind(host: bindHost, port: 0) { channel in
-                channel.eventLoop.makeCompletedFuture {
-                    let verifier = try configuration.makeAsyncVerifier(eventLoop: channel.eventLoop)
-                    let handler = QUICHandler(
-                        channel: channel,
-                        quicConfiguration: nioqConfiguration,
-                        asyncVerifier: verifier,
-                        authenticator: nil,
-                        logger: logger,
-                        metrics: metrics,
-                        inboundConnectionInitializer: { connectionChannel, _ in
-                            // Clients do not accept inbound connections.
-                            connectionChannel.close()
-                        },
-                        inboundStreamInitializer: { streamChannel in
-                            streamChannel.eventLoop.makeFailedFuture(
-                                QUICConnectionError(
-                                    code: .closed,
-                                    message: "inbound stream on unknown client connection"
-                                )
-                            )
-                        },
-                        noMoreConnections: {}
-                    )
-                    try channel.pipeline.syncOperations.addHandler(handler)
-                    return channel
-                }
+        let udpChannel: any Channel
+        if let localAddress {
+            // Binding a specific local port typically means the caller wants to
+            // reuse a known mapping (NAT hole punching); allow prompt rebind.
+            udpChannel = try await DatagramBootstrap(group: eventLoopGroup)
+                .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
+                .bind(to: localAddress, channelInitializer: channelInitializer)
+        } else {
+            let bindHost: String
+            switch remoteAddress {
+            case .v6:
+                bindHost = "::"
+            default:
+                bindHost = "0.0.0.0"
             }
+            udpChannel = try await DatagramBootstrap(group: eventLoopGroup)
+                .bind(host: bindHost, port: 0, channelInitializer: channelInitializer)
+        }
 
         do {
             let connectionBox: Mutex<QUICConnection?> = Mutex(nil)
@@ -244,10 +262,14 @@ public enum QUICClient {
 
     /// Connects to a QUIC server, runs `body`, and closes the connection when
     /// the body returns or throws.
+    ///
+    /// - Parameter localAddress: The local address to bind, or `nil` for an
+    ///   ephemeral port. See ``connect(to:port:configuration:localAddress:eventLoopGroup:)``.
     public static func withConnection<Result: Sendable>(
         to host: String,
         port: Int,
         configuration: Configuration,
+        localAddress: SocketAddress? = nil,
         eventLoopGroup: any EventLoopGroup = MultiThreadedEventLoopGroup.singleton,
         isolation: isolated (any Actor)? = #isolation,
         _ body: (QUICConnection) async throws -> Result
@@ -256,6 +278,7 @@ public enum QUICClient {
             to: host,
             port: port,
             configuration: configuration,
+            localAddress: localAddress,
             eventLoopGroup: eventLoopGroup
         )
         do {
