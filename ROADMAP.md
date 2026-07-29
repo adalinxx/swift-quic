@@ -25,8 +25,8 @@ split by who can move each item.
 - **Versioned releases**: fork prerelease tags make the dependency chain
   version-stable; consume via `from: "0.3.0"`.
 - **HTTP/3** (RFC 9114): the `QUICHTTP3` product (`HTTP3Server`/`HTTP3Client`)
-  on swift-nio-http3, end-to-end tested and verified against
-  `cloudflare-quic.com`.
+  on swift-nio-http3, with collected *and* incremental-streaming bodies in
+  both directions, end-to-end tested and verified against `cloudflare-quic.com`.
 
 ## In progress (ours to do)
 
@@ -38,9 +38,8 @@ split by who can move each item.
   (the runner's default certs) against the SwiftTLS signing path.
 - **Performance**: UDP batching (`sendmmsg`/`recvmmsg`) exploration, buffer
   reuse in the stream bridge, allocation-counter regression tests.
-- **HTTP/3 streaming bodies**: the current layer collects request/response
-  bodies (the common case); incremental body streaming and server push are
-  the next additions.
+- **HTTP/3 server push and trailers**: collected and streaming bodies are
+  done; server push and trailer fields are the next HTTP/3 additions.
 - **Connection statistics API** (RTT, congestion window, loss counters) —
   partially exposed today via swift-metrics at connection close; a live
   per-connection query needs upstream surface.

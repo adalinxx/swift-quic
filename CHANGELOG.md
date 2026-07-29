@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 — 2026-07-29
+
+- **HTTP/3 streaming bodies**: incremental request and response bodies in both
+  directions, preserving backpressure — for large uploads/downloads,
+  server-sent events, and gRPC-style workloads.
+  - Server: `server.run(streaming:)` with a `StreamingRequest` (head + body
+    `AsyncSequence`) and a `ResponseWriter` (`writeHead`, `write`).
+  - Client: `connection.withStreamingRequest(_:)` with a `RequestBodyWriter`
+    (`write`, `finish`) and a `StreamingResponse` (lazy `head()` + body
+    `AsyncSequence`).
+  - Covered by full-duplex echo, streamed download, and streamed upload tests.
+  The collected `HTTP3Request`/`HTTP3Response` API remains for the common case.
+
 ## 0.3.0 — 2026-07-29
 
 - **HTTP/3 (RFC 9114)**: new `QUICHTTP3` product with `HTTP3Server` and
