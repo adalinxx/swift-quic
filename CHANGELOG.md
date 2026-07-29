@@ -1,13 +1,24 @@
 # Changelog
 
-## Unreleased
+## 0.7.0 — 2026-07-29
 
-- **WebTransport foundation**: RFC 9297 HTTP/3 datagram and capsule wire
-  codecs plus RFC 9000 QUIC variable-length integers (`HTTP3DatagramCodec`,
-  `QUICVarint`), with 9 unit tests including the RFC 9000 § A.1 known-answer
-  vector. This is the framing layer WebTransport (and MASQUE) build on;
-  connection-channel datagram routing and extended-CONNECT session lifecycle
-  are the remaining pieces (ROADMAP.md, docs/upstream-issues/04).
+- **WebTransport** (draft-ietf-webtrans-http3): a new `WebTransportServer` /
+  `WebTransportClient` API with sessions and datagrams.
+  - Sessions established over HTTP/3 extended CONNECT (`:protocol=webtransport`),
+    with `SETTINGS_H3_DATAGRAM` / `ENABLE_CONNECT_PROTOCOL` / `WT_MAX_SESSIONS`
+    negotiation.
+  - `WebTransportSession.sendDatagram(_:)` and `datagrams` (RFC 9297 HTTP/3
+    datagrams, routed by quarter-stream-id on the connection channel).
+  - Session lifecycle: establish, app close, and peer/connection close.
+  - End-to-end tested (session establishment, datagram echo, many datagrams)
+    between the swift-quic client and server.
+- Foundation from the previous unreleased entry (`HTTP3DatagramCodec`,
+  `QUICVarint`, 9 codec tests) ships as part of this.
+- Required a fork fix (extended CONNECT with `:scheme`/`:path`, RFC 9220) in
+  swift-nio-http3, prepared as an upstream PR.
+- **Remaining**: WebTransport *streams* (type-prefixed QUIC bi/unidirectional
+  streams) are the next addition; they need an inbound stream-type router in
+  front of HTTP/3. Datagrams are complete. See ROADMAP.md.
 
 ## 0.6.0 — 2026-07-29
 

@@ -1,5 +1,5 @@
 {
-  "originHash" : "fe64cb3f133bf3ad01157a2ae2f54ca6bb6c4c9a9338872e2343f11cb5bdf836",
+  "originHash" : "6b8f45ca7a820f4c9e6ebfb398ffe1ec03af9677477f9721559f1c9b15cbcee1",
   "pins" : [
     {
       "identity" : "swift-algorithms",
@@ -159,8 +159,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/adalinxx/swift-nio-http3",
       "state" : {
-        "revision" : "4c3bf2cf8841c9e7ad957e70dfe8e6fab4f6ee09",
-        "version" : "0.1.0-swiftquic.1"
+        "revision" : "748c237c084b48d9b8bf6ed0485f98fd19cd4650",
+        "version" : "0.1.1-swiftquic.1"
       }
     },
     {

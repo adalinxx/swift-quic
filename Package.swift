@@ -44,7 +44,7 @@ let package = Package(
         .package(url: "https://github.com/adalinxx/swift-network-evolution", exact: "0.1.2-swiftquic.1"),
         .package(url: "https://github.com/apple/swift-nio-quic-helpers.git", .upToNextMinor(from: "0.1.0")),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.0"),
-        .package(url: "https://github.com/adalinxx/swift-nio-http3", exact: "0.1.0-swiftquic.1"),
+        .package(url: "https://github.com/adalinxx/swift-nio-http3", exact: "0.1.1-swiftquic.1"),
         .package(url: "https://github.com/apple/swift-http-types", from: "1.4.0"),
         .package(url: "https://github.com/apple/swift-nio-extras", from: "1.30.0"),
     ],
