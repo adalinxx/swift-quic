@@ -160,6 +160,11 @@ public enum QUICClient {
             // Binding a specific local port typically means the caller wants to
             // reuse a known mapping (NAT hole punching); allow prompt rebind.
             udpChannel = try await DatagramBootstrap(group: eventLoopGroup)
+            // Batch datagram reads (recvmmsg on Linux). The receive allocator must
+            // give each of the N message slots room for a full datagram, or the
+            // vector read truncates packets (NIO splits one buffer N ways).
+            .channelOption(.datagramVectorReadMessageCount, value: 8)
+            .channelOption(.recvAllocator, value: FixedSizeRecvByteBufferAllocator(capacity: 8 * 2048))
             .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
                 .bind(to: localAddress, channelInitializer: channelInitializer)
         } else {
@@ -171,6 +176,11 @@ public enum QUICClient {
                 bindHost = "0.0.0.0"
             }
             udpChannel = try await DatagramBootstrap(group: eventLoopGroup)
+            // Batch datagram reads (recvmmsg on Linux). The receive allocator must
+            // give each of the N message slots room for a full datagram, or the
+            // vector read truncates packets (NIO splits one buffer N ways).
+            .channelOption(.datagramVectorReadMessageCount, value: 8)
+            .channelOption(.recvAllocator, value: FixedSizeRecvByteBufferAllocator(capacity: 8 * 2048))
             .bind(host: bindHost, port: 0, channelInitializer: channelInitializer)
         }
 

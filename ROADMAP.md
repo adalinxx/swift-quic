@@ -22,6 +22,8 @@ split by who can move each item.
   cross-implementation transfers against quic-go and quiche**
   ([interop/](interop/)).
 - Client connect timeout (default 10 s) with black-hole test coverage.
+- Datagram receive batching (`recvmmsg`) on Linux with a correctly-sized
+  receive allocator.
 - **Versioned releases**: fork prerelease tags make the dependency chain
   version-stable; consume via `from: "0.3.0"`.
 - **HTTP/3** (RFC 9114): the `QUICHTTP3` product (`HTTP3Server`/`HTTP3Client`)
@@ -37,11 +39,10 @@ split by who can move each item.
   [interop/](interop/). Remaining: the full official runner matrix (needs its
   ns-3 simulator), more implementations, and verifying RSA server identities
   (the runner's default certs) against the SwiftTLS signing path.
-- **Performance**: receive batching (`recvmmsg` via
-  `datagramVectorReadMessageCount`) was tried and reverted — it broke the
-  Linux datagram path and needs deeper NIOQUIC receive-buffer integration.
-  Send batching (`sendmmsg`), buffer reuse in the stream bridge, and an
-  allocation-counter regression harness also remain.
+- **Performance**: receive batching (`recvmmsg`) is enabled with a correctly
+  sized receive allocator (see BENCHMARKS.md). Send batching (`sendmmsg`),
+  buffer reuse in the stream bridge, and an allocation-counter regression
+  harness remain.
 - **Connection statistics API** (RTT, congestion window, loss counters) —
   partially exposed today via swift-metrics at connection close; a live
   per-connection query needs upstream surface.

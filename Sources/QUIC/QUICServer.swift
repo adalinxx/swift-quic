@@ -144,6 +144,11 @@ public final class QUICServer: Sendable {
         let metrics = configuration.metrics
 
         let (udpChannel, handlerHandle) = try await DatagramBootstrap(group: eventLoopGroup)
+            // Batch datagram reads (recvmmsg on Linux). The receive allocator must
+            // give each of the N message slots room for a full datagram, or the
+            // vector read truncates packets (NIO splits one buffer N ways).
+            .channelOption(.datagramVectorReadMessageCount, value: 8)
+            .channelOption(.recvAllocator, value: FixedSizeRecvByteBufferAllocator(capacity: 8 * 2048))
             .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
             .bind(host: host, port: port) { channel in
                 channel.eventLoop.makeCompletedFuture {

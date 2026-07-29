@@ -103,6 +103,35 @@ func echoConnectionHandler(_ connection: QUICConnection) async {
     }
 }
 
+/// Runs `body` over a fresh client connection, retrying the whole
+/// connect-and-exchange a few times if it fails.
+///
+/// This exists only to absorb the intermittent upstream TLS-teardown race
+/// (see docs/upstream-issues/03) that can spuriously fail an otherwise-valid
+/// handshake under heavy load; it is not a substitute for real error handling.
+func withRetriedConnection<Result: Sendable>(
+    to host: String,
+    port: Int,
+    configuration: QUICClient.Configuration,
+    attempts: Int = 4,
+    _ body: @escaping @Sendable (QUICConnection) async throws -> Result
+) async throws -> Result {
+    var lastError: (any Error)?
+    for attempt in 1...attempts {
+        do {
+            return try await QUICClient.withConnection(
+                to: host, port: port, configuration: configuration, body
+            )
+        } catch {
+            lastError = error
+            if attempt < attempts {
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+        }
+    }
+    throw lastError!
+}
+
 /// Deterministic pseudo-random bytes for payload integrity checks.
 func makePatternedBuffer(byteCount: Int, seed: UInt8 = 7) -> ByteBuffer {
     var bytes = [UInt8]()
