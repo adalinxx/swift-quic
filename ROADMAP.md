@@ -18,15 +18,20 @@ split by who can move each item.
   nightly soak test; 53-test suite on macOS and Linux.
 - Loopback benchmark suite with published reference numbers
   ([BENCHMARKS.md](BENCHMARKS.md)).
-- QUIC Interop Runner endpoint scaffold (`hq-interop`) with local smoke test
+- QUIC Interop Runner endpoint (`hq-interop`) with **verified
+  cross-implementation transfers against quic-go and quiche**
   ([interop/](interop/)).
+- Client connect timeout (default 10 s) with black-hole test coverage.
+- **Versioned releases**: fork prerelease tags make the dependency chain
+  version-stable; consume via `from: "0.2.0"`.
 
 ## In progress (ours to do)
 
-- **Interop matrix validation**: run the endpoint against quic-go, ngtcp2,
-  quiche, and msquic via the official runner; publish results. Open question:
-  the runner generates RSA certificates by default — RSA server identities
-  need verification against the SwiftTLS signing path.
+- **Interop matrix validation**: bidirectional hash-verified transfers
+  against quic-go (as server) and quiche (as client) already pass — see
+  [interop/](interop/). Remaining: the full official runner matrix (needs its
+  ns-3 simulator), more implementations, and verifying RSA server identities
+  (the runner's default certs) against the SwiftTLS signing path.
 - **Performance**: UDP batching (`sendmmsg`/`recvmmsg`) exploration, buffer
   reuse in the stream bridge, allocation-counter regression tests.
 - **HTTP/3 convenience layer** on top of streams (upstream has

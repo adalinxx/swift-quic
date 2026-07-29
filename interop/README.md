@@ -3,10 +3,18 @@
 This directory contains a [QUIC Interop Runner](https://github.com/quic-interop/quic-interop-runner)
 endpoint for swift-quic, speaking the `hq-interop` application protocol.
 
-**Status: experimental.** The endpoint builds and serves/fetches files
-locally; full runner-matrix validation against other implementations
-(quic-go, ngtcp2, quiche, msquic, …) is in progress — see
-[ROADMAP.md](../ROADMAP.md).
+**Status: cross-implementation transfer verified.** Hash-verified 5 MiB
+`transfer` runs on a shared Docker network (2026-07-29):
+
+| Direction | Peer | Result |
+|---|---|---|
+| swift-quic client ← server | quic-go (`martenseemann/quic-go-interop`) | ✅ SHA-256 match |
+| client → swift-quic server | quiche (`cloudflare/quiche-qns`, `quiche-client --no-verify`) | ✅ SHA-256 match |
+
+Full runner-matrix automation is still pending (the official runner needs its
+ns-3 simulator; several implementations' *client* roles hang without it — 
+quic-go's client does, which is why quiche covers the inbound direction).
+See [ROADMAP.md](../ROADMAP.md).
 
 ## Supported test cases
 

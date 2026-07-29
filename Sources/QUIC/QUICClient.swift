@@ -59,6 +59,12 @@ public enum QUICClient {
         /// key exchange.
         public var keyExchangeGroup: QUICKeyExchangeGroup = .x25519
 
+        /// How long ``connect(to:port:configuration:eventLoopGroup:)`` may
+        /// take before failing with ``QUICConnectionError/Code-swift.struct/connectFailed``.
+        /// Defaults to 10 seconds. Without this, a black-holed address would
+        /// hold the caller until the idle timeout.
+        public var connectTimeout: Duration = .seconds(10)
+
         /// Forces a QUIC version negotiation round trip. Mainly for testing.
         public var forceVersionNegotiation: Bool = false
 
@@ -194,7 +200,34 @@ public enum QUICClient {
                     )
                 }
 
-            _ = try await connectionFuture.get()
+            // Race connection establishment against the connect timeout.
+            // `withCancellableWait` makes the future await cancellable, so
+            // the losing branch is always reaped.
+            let timeout = configuration.connectTimeout
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    let promise = udpChannel.eventLoop.makePromise(of: Void.self)
+                    connectionFuture.map { _ in }.cascade(to: promise)
+                    try await withCancellableWait(promise.futureResult)
+                }
+                group.addTask {
+                    try await Task.sleep(for: timeout)
+                    throw QUICConnectionError(
+                        code: .connectFailed,
+                        message: "connect timed out after \(timeout)"
+                    )
+                }
+                do {
+                    try await group.next()
+                } catch {
+                    group.cancelAll()
+                    _ = try? await group.next()
+                    throw error
+                }
+                group.cancelAll()
+                // Drain the cancelled loser, swallowing its CancellationError.
+                _ = try? await group.next()
+            }
 
             guard let connection = connectionBox.withLock({ $0 }) else {
                 throw QUICConnectionError(

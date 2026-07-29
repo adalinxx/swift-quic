@@ -1,6 +1,21 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-07-29
+
+- **Versioned releases unblocked**: the maintained forks now carry prerelease
+  tags, so the whole dependency chain is version-stable and swift-quic can be
+  consumed with `from: "0.2.0"` instead of branch pinning.
+- **Cross-implementation interop verified**: hash-verified 5 MiB transfers
+  with quic-go (their server, our client) and quiche (their client, our
+  server) over the hq-interop protocol.
+- Added `QUICClient.Configuration.connectTimeout` (default 10 s) so connects
+  to unresponsive addresses fail fast; covered by a black-hole test.
+- Fourth upstream crash class fixed in the swift-network-evolution fork
+  ("Cannot attach to empty protocol" when a stream attach races TLS-failure
+  teardown; 16 trap sites now throw).
+- Added docs/production-guide.md with a candid readiness statement.
+
+## Unreleased (history)
 
 - The package now pins maintained forks of `swift-nio-quic` and
   `swift-network-evolution` carrying fixes for three upstream bugs we found
