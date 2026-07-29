@@ -16,8 +16,10 @@ verification, sensible transport parameters).
 
 - **HTTP/3** (RFC 9114): an `HTTP3Server` / `HTTP3Client` layer (the `QUICHTTP3`
   product) with async request/response over
-  [swift-nio-http3](https://github.com/apple/swift-nio-http3). Verified against
-  production servers (fetches `cloudflare-quic.com` over HTTP/3).
+  [swift-nio-http3](https://github.com/apple/swift-nio-http3), including
+  **incremental streaming bodies** in both directions (uploads, downloads,
+  SSE-style responses). Verified against production servers (fetches
+  `cloudflare-quic.com` over HTTP/3).
 - **Streams**: bidirectional and unidirectional, client- and server-initiated,
   with flow-control-aware backpressure on reads and writes.
 - **Unreliable datagrams** (RFC 9221): `sendDatagram(_:)` and an async
@@ -121,6 +123,23 @@ try await server.run { request in
 try await HTTP3Client.withConnection(to: "example.com", port: 443, configuration: .init()) { connection in
     let response = try await connection.get("/")
     print(response.status, String(buffer: response.body))
+}
+```
+
+For large or long-lived bodies, stream incrementally instead of buffering:
+
+```swift
+// Server: echo the request body back without collecting it
+try await server.run(streaming: { request, response in
+    try await response.writeHead(status: .ok)
+    for try await chunk in request.body { try await response.write(chunk) }
+})
+
+// Client: stream a request body, then read the response body incrementally
+try await connection.withStreamingRequest(HTTPRequest(method: .post, scheme: "https", authority: "h", path: "/")) { writer, response in
+    try await writer.write(ByteBuffer(string: "chunk")); writer.finish()
+    let head = try await response.head()
+    for try await chunk in response.body { /* ... */ }
 }
 ```
 

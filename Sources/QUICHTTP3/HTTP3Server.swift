@@ -73,7 +73,7 @@ public final class HTTP3Server: Sendable {
     }
 
     private let udpChannel: any Channel
-    private let multiplexer: HTTP3ServerConnectionMultiplexer<RequestStream, QUICStreamCreator>
+    let multiplexer: HTTP3ServerConnectionMultiplexer<RequestStream, QUICStreamCreator>
     private let maxRequestBodyBytes: Int
 
     /// The address the server is listening on.

@@ -129,8 +129,8 @@ public enum HTTP3Client {
     /// the ``get(_:headerFields:)`` convenience.
     public struct Connection: Sendable {
         typealias H3 = HTTP3ClientConnection<Void, QUICStreamCreator>
-        private let underlying: H3
-        private let authority: String
+        let underlying: H3
+        let authority: String
         private let maxResponseBodyBytes: Int
 
         init(underlying: H3, authority: String, maxResponseBodyBytes: Int) {
