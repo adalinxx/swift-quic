@@ -59,7 +59,7 @@ split by who can move each item.
 | mTLS (client certificates) | apple/swift-nio-quic#5. |
 | `SSLKEYLOGFILE` output | apple/swift-nio-quic#7 (`setKeylogPath` is a TODO); our config knob is plumbed and documented as a no-op. |
 | Stream priorities (RFC 9218 scheduling) | Requires upstream write-scheduler control. |
-| **WebTransport** | No HTTP/3 datagrams (RFC 9297), no `ENABLE_WEBTRANSPORT`/`ENABLE_CONNECT_PROTOCOL` settings, no stream↔session plumbing in swift-nio-http3. See [docs/upstream-issues/04](docs/upstream-issues/04-webtransport-and-server-push-gaps.md). |
+| **WebTransport** | In progress, not blocked: the RFC 9297 datagram/capsule wire codec is implemented and tested (`HTTP3DatagramCodec`, `QUICVarint`), and H3 settings are extensible. Remaining: connection-channel datagram routing and extended-CONNECT session lifecycle. See [docs/upstream-issues/04](docs/upstream-issues/04-webtransport-and-server-push-gaps.md). |
 | **HTTP/3 server push** | swift-nio-http3 async interface has no server-side push creation (upstream TODO); also ecosystem-deprecated. Same doc as above. |
 | Thread Sanitizer CI | The Swift 6.3 compiler crashes (signal 6) compiling the dependency tree with `-sanitize=thread`; retry on newer toolchains. |
 

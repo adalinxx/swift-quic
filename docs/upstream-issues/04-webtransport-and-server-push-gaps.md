@@ -26,8 +26,29 @@ Extended CONNECT itself is partially present — the codec can encode the
 `:protocol` pseudo-header (`HTTP3ToHTTPCodecs.swift`) — but that is a small
 fraction of what WebTransport requires.
 
-**Conclusion:** blocked on H3 datagrams + WebTransport settings + session
-plumbing in swift-nio-http3. Tracking upstream; revisit when H3 datagrams land.
+**Status update.** Re-evaluated: two of the three sub-blocks are *not* as
+blocked as first thought.
+
+- **Settings** are extensible after all: `HTTP3Setting.Identifier(extensionSetting:)`
+  accepts arbitrary identifiers and `HTTP3Settings` round-trips unknown ones, so
+  `SETTINGS_H3_DATAGRAM`, `ENABLE_CONNECT_PROTOCOL`, and the WebTransport
+  settings can be negotiated without forking.
+- **Wire framing** is now implemented in swift-quic: `HTTP3DatagramCodec` and
+  `QUICVarint` (RFC 9000 § 16 / RFC 9297 § 2.1 § 3.2) encode/decode HTTP/3
+  datagrams (quarter-stream-id + payload) and capsules, with 9 unit tests
+  including the RFC 9000 § A.1 known-answer vector.
+
+**Remaining work** (the real effort, in progress):
+
+1. Route inbound QUIC datagrams on the H3 connection channel to the owning
+   request stream by quarter-stream-id, and provide a send path — this needs a
+   handler on the connection-channel pipeline alongside `HTTP3ConnectionHandler`.
+2. Extended-CONNECT session lifecycle: accept `CONNECT` + `:protocol` and keep
+   the stream open as a session, mapping WT streams/datagrams to it.
+3. Interop against a browser or `webtransport-go`.
+
+The foundation (1 of 3 pieces) is done; the connection-channel datagram routing
+and session lifecycle are the next steps.
 
 ## HTTP/3 server push
 
