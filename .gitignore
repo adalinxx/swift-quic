@@ -1,0 +1,5 @@
+.build/
+.DS_Store
+/vendor-swift-nio-quic/
+*.xcodeproj
+.swiftpm/
