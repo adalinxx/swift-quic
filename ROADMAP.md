@@ -26,7 +26,10 @@ split by who can move each item.
   version-stable; consume via `from: "0.3.0"`.
 - **HTTP/3** (RFC 9114): the `QUICHTTP3` product (`HTTP3Server`/`HTTP3Client`)
   on swift-nio-http3, with collected *and* incremental-streaming bodies in
-  both directions, end-to-end tested and verified against `cloudflare-quic.com`.
+  both directions, **trailer fields** (send + receive), end-to-end tested and
+  verified against `cloudflare-quic.com`.
+- **Datagram vectored reads** (`recvmmsg`) on all UDP sockets for server
+  packet-rate scalability.
 
 ## In progress (ours to do)
 
@@ -36,10 +39,9 @@ split by who can move each item.
   [interop/](interop/). Remaining: the full official runner matrix (needs its
   ns-3 simulator), more implementations, and verifying RSA server identities
   (the runner's default certs) against the SwiftTLS signing path.
-- **Performance**: UDP batching (`sendmmsg`/`recvmmsg`) exploration, buffer
-  reuse in the stream bridge, allocation-counter regression tests.
-- **HTTP/3 server push and trailers**: collected and streaming bodies are
-  done; server push and trailer fields are the next HTTP/3 additions.
+- **Performance**: receive batching (`recvmmsg`) is enabled; send batching
+  (`sendmmsg`), buffer reuse in the stream bridge, and an allocation-counter
+  regression harness remain.
 - **Connection statistics API** (RTT, congestion window, loss counters) —
   partially exposed today via swift-metrics at connection close; a live
   per-connection query needs upstream surface.
@@ -56,6 +58,8 @@ split by who can move each item.
 | mTLS (client certificates) | apple/swift-nio-quic#5. |
 | `SSLKEYLOGFILE` output | apple/swift-nio-quic#7 (`setKeylogPath` is a TODO); our config knob is plumbed and documented as a no-op. |
 | Stream priorities (RFC 9218 scheduling) | Requires upstream write-scheduler control. |
+| **WebTransport** | No HTTP/3 datagrams (RFC 9297), no `ENABLE_WEBTRANSPORT`/`ENABLE_CONNECT_PROTOCOL` settings, no stream↔session plumbing in swift-nio-http3. See [docs/upstream-issues/04](docs/upstream-issues/04-webtransport-and-server-push-gaps.md). |
+| **HTTP/3 server push** | swift-nio-http3 async interface has no server-side push creation (upstream TODO); also ecosystem-deprecated. Same doc as above. |
 | Thread Sanitizer CI | The Swift 6.3 compiler crashes (signal 6) compiling the dependency tree with `-sanitize=thread`; retry on newer toolchains. |
 
 ## Upstream bugs: found, fixed in our forks, PRs prepared

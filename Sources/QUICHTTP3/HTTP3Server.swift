@@ -112,7 +112,7 @@ public final class HTTP3Server: Sendable {
         let metrics = configuration.metrics
 
         let (udpChannel, multiplexer) = try await DatagramBootstrap(group: eventLoopGroup)
-            .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
+            .channelOption(.datagramVectorReadMessageCount, value: 8)            .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
             .bind(host: host, port: port) {
                 channel -> EventLoopFuture<(
                     any Channel, HTTP3ServerConnectionMultiplexer<RequestStream, QUICStreamCreator>
@@ -183,6 +183,7 @@ public final class HTTP3Server: Sendable {
             try await stream.asyncChannel.executeThenClose { inbound, outbound in
                 var head: HTTPRequest?
                 var body = ByteBuffer()
+                var requestTrailers = HTTPFields()
                 for try await part in inbound {
                     switch part {
                     case .head(let request):
@@ -194,20 +195,22 @@ public final class HTTP3Server: Sendable {
                             return
                         }
                         body.writeBuffer(&buffer)
-                    case .end:
-                        break
+                    case .end(let trailers):
+                        if let trailers { requestTrailers = trailers }
                     }
                 }
                 guard let head else { return }
 
-                let response = await handler(HTTP3ServerRequest(head: head, body: body))
+                let response = await handler(
+                    HTTP3ServerRequest(head: head, body: body, trailers: requestTrailers)
+                )
                 var responseHead = response.httpResponse
                 responseHead.headerFields[.contentLength] = String(response.body.readableBytes)
                 try await outbound.write(.head(responseHead))
                 if response.body.readableBytes > 0 {
                     try await outbound.write(.body(response.body))
                 }
-                try await outbound.write(.end(nil))
+                try await outbound.write(.end(response.trailers.isEmpty ? nil : response.trailers))
                 outbound.finish()
             }
         } catch {

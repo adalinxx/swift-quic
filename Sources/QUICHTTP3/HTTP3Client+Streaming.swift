@@ -39,6 +39,14 @@ extension HTTP3Client.Connection {
         public func finish() {
             self.writer.finish()
         }
+
+        /// Signals the end of the request body with trailer fields.
+        public func finish(trailers: HTTPFields) async throws {
+            if !trailers.isEmpty {
+                try await self.writer.write(.end(trailers))
+            }
+            self.writer.finish()
+        }
     }
 
     /// A response whose head is read on demand and whose body is read

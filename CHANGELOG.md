@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.0 — 2026-07-29
+
+- **HTTP/3 trailers**: send and receive trailer fields on both the collected
+  and streaming APIs — `HTTP3Response.trailers`, `HTTP3ServerRequest.trailers`,
+  `ResponseWriter.setTrailers(_:)`, `RequestBodyWriter.finish(trailers:)`, and
+  `HTTP3IncomingBody.trailers` (available once the body is consumed). Tested for
+  collected responses, streaming responses, and request trailers.
+- **Datagram vectored reads**: every UDP socket now enables NIO's
+  `datagramVectorReadMessageCount` (batched `recvmmsg`) to cut per-packet
+  syscall overhead on busy servers. See BENCHMARKS.md.
+- **WebTransport** and **HTTP/3 server push** were evaluated and are blocked on
+  upstream swift-nio-http3 (no H3 datagrams / WebTransport settings; no
+  server-side push creation). Precise gap analysis in
+  docs/upstream-issues/04.
+
 ## 0.4.0 — 2026-07-29
 
 - **HTTP/3 streaming bodies**: incremental request and response bodies in both

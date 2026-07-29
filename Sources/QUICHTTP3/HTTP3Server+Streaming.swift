@@ -11,6 +11,7 @@
 import HTTPTypes
 import NIOCore
 import NIOHTTPTypes
+import NIOConcurrencyHelpers
 @_spi(HTTP3AsyncInterface) import NIOHTTP3
 
 @available(macOS 26, iOS 26, tvOS 26, watchOS 26, visionOS 26, *)
@@ -32,9 +33,16 @@ extension HTTP3Server {
     /// chunks. The message is finished automatically when the handler returns.
     public struct ResponseWriter: Sendable {
         private let writer: NIOAsyncChannelOutboundWriter<HTTPResponsePart>
+        private let pendingTrailers: NIOLockedValueBox<HTTPFields>
 
-        init(writer: NIOAsyncChannelOutboundWriter<HTTPResponsePart>) {
+        init(writer: NIOAsyncChannelOutboundWriter<HTTPResponsePart>, pendingTrailers: NIOLockedValueBox<HTTPFields>) {
             self.writer = writer
+            self.pendingTrailers = pendingTrailers
+        }
+
+        /// Sets trailer fields to send after the body when the response ends.
+        public func setTrailers(_ trailers: HTTPFields) {
+            self.pendingTrailers.withLockedValue { $0 = trailers }
         }
 
         /// Sends the response head. Call once, before any body chunk.
@@ -104,13 +112,15 @@ extension HTTP3Server {
                     return
                 }
                 let request = StreamingRequest(head: head, body: HTTP3IncomingBody(reader: reader))
-                let writer = ResponseWriter(writer: outbound)
+                let pendingTrailers = NIOLockedValueBox<HTTPFields>([:])
+                let writer = ResponseWriter(writer: outbound, pendingTrailers: pendingTrailers)
                 try await handler(request, writer)
                 // Drain any unread request body so closing the stream doesn't
                 // reset the peer mid-response (e.g. a handler that ignores the
                 // request body).
                 await reader.drain()
-                try await outbound.write(.end(nil))
+                let trailers = pendingTrailers.withLockedValue { $0 }
+                try await outbound.write(.end(trailers.isEmpty ? nil : trailers))
                 outbound.finish()
             }
         } catch {
