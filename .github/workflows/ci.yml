@@ -12,11 +12,19 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
-      - name: Select newest Xcode
+      # The pinned swift-nio-quic revision targets Swift 6.3; its upstream
+      # SwiftNetwork dependency crashes at runtime when built with the 6.4
+      # toolchain. Select the newest Xcode that ships Swift 6.3.
+      - name: Select newest Xcode with Swift 6.3
         run: |
-          XCODE="$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
-          echo "Selecting $XCODE"
-          sudo xcode-select -s "$XCODE"
+          for XCODE in $(ls -d /Applications/Xcode_*.app | sort -rV); do
+            SWIFT="$XCODE/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift"
+            if "$SWIFT" --version 2>/dev/null | head -1 | grep -q "Swift version 6\.3"; then
+              echo "Selecting $XCODE"
+              sudo xcode-select -s "$XCODE"
+              break
+            fi
+          done
           swift --version
       - name: Build
         run: SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA=1 swift build --build-tests
