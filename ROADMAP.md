@@ -48,11 +48,22 @@ split by who can move each item.
 | Stream priorities (RFC 9218 scheduling) | Requires upstream write-scheduler control. |
 | Thread Sanitizer CI | The Swift 6.3 compiler crashes (signal 6) compiling the dependency tree with `-sanitize=thread`; retry on newer toolchains. |
 
-Two upstream bugs we found, worked around, and drafted reports for
-(see [docs/upstream-issues/](docs/upstream-issues/)):
+## Upstream bugs: found, fixed in our forks, PRs prepared
 
-1. Peer `RESET_STREAM` can surface as a raw `NetworkError` (sometimes with the
-   application error code degraded to a bare POSIX `ECONNRESET`) instead of
-   `QUICStreamResetError`.
-2. An early datagram write is buffered forever (promise never completes) if
-   the datagram flow fails to attach; the attach error is swallowed.
+We found three bugs in the upstream stack, **fixed them in maintained forks
+that this package now pins** (`adalinxx/swift-nio-quic`,
+`adalinxx/swift-network-evolution`), and prepared upstream pull requests —
+see [docs/upstream-issues/](docs/upstream-issues/):
+
+1. Peer `RESET_STREAM` surfacing as a raw `NetworkError` instead of
+   `QUICStreamResetError` (fixed on the disconnect path; the bare-POSIX
+   variant is noted as follow-up since the code is lost at a lower layer).
+2. Early datagram writes buffered forever when the datagram flow fails to
+   attach (now failed immediately, with a regression test).
+3. Process crash (`ProtocolEventManager` force-unwrap) when operations race
+   TLS-failure teardown (all eight trap sites now guard on detachment).
+
+The forks track upstream `main`; when Apple merges the PRs (or ships
+equivalent fixes), we re-pin to upstream and the forks retire. The library's
+own defensive layers (error mapping, cancellation-safe awaits, close-flag
+guards) stay regardless.
