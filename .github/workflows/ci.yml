@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-macos:
+    name: Build and test (macOS)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.0.app
+      - name: Build
+        run: SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA=1 swift build --build-tests
+      - name: Test
+        run: SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA=1 swift test --parallel

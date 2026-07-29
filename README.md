@@ -1,0 +1,145 @@
+# swift-quic
+
+An easy-to-use, fully-tested Swift QUIC library built on Apple's
+[swift-nio-quic](https://github.com/apple/swift-nio-quic).
+
+`swift-quic` wraps the low-level NIO channel machinery in a small, modern Swift
+API: `async`/`await` everywhere, `AsyncSequence` for streams and datagrams,
+structured-concurrency-friendly lifecycles, and safe defaults (full certificate
+verification, sensible transport parameters).
+
+## Features
+
+- **Streams**: bidirectional and unidirectional, client- and server-initiated,
+  with flow-control-aware backpressure on reads and writes.
+- **Unreliable datagrams** (RFC 9221): `sendDatagram(_:)` and an async
+  `datagrams` sequence, with bounded drop-oldest receive buffering.
+- **Stream lifecycle control**: half-close (`finish()`), `RESET_STREAM`
+  (`reset(errorCode:)`), `STOP_SENDING` (`stopSending(errorCode:)`), and typed
+  errors carrying the peer's application error codes.
+- **TLS made simple**: PEM files, in-memory certificates, raw public keys
+  (RFC 7250), custom trust roots, and a one-line ephemeral **self-signed
+  identity** for development.
+- **Post-quantum key exchange**: opt into hybrid `X25519MLKEM768` with one
+  setting.
+- **Graceful shutdown**, application-error connection close, keep-alive,
+  Retry-based address validation, qlog and `SSLKEYLOGFILE` configuration
+  hooks, and swift-metrics integration.
+
+## Requirements
+
+- Swift 6.3+
+- macOS 26+ (or other 26-era Apple platforms) — inherited from the underlying
+  `swift-network-evolution` QUIC implementation
+- Build with `SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA=1` while the
+  dependency tree uses a swift-crypto beta
+
+## Quick start
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/adalinxx/swift-quic", branch: "main"),
+]
+// target dependencies: .product(name: "QUIC", package: "swift-quic")
+```
+
+### Server
+
+```swift
+import QUIC
+
+let server = try await QUICServer.bind(
+    host: "0.0.0.0",
+    port: 4433,
+    configuration: .init(
+        identity: .certificateChain(pemFile: "cert.pem", privateKeyPEMFile: "key.pem"),
+        applicationProtocols: ["my-proto"]
+    )
+)
+
+try await server.run { connection in
+    for await stream in connection.incomingStreams {
+        // Echo:
+        for try await chunk in stream.inbound {
+            try await stream.send(chunk)
+        }
+        try await stream.finish()
+    }
+}
+```
+
+### Client
+
+```swift
+import QUIC
+
+var configuration = QUICClient.Configuration(applicationProtocols: ["my-proto"])
+
+try await QUICClient.withConnection(to: "example.com", port: 4433, configuration: configuration) { connection in
+    let stream = try await connection.openBidirectionalStream()
+    try await stream.send("hello")
+    try await stream.finish()
+    let reply = try await stream.collect(upTo: 1 << 20)
+    print(String(buffer: reply))
+}
+```
+
+### Datagrams
+
+```swift
+try await connection.sendDatagram(ByteBuffer(string: "unreliable ping"))
+for await datagram in connection.datagrams {
+    print("got \(datagram.readableBytes) bytes")
+}
+```
+
+### Development TLS in one line
+
+```swift
+let selfSigned = try QUICIdentity.selfSigned()          // in-memory, ephemeral
+// server:
+let serverConfig = QUICServer.Configuration(
+    identity: selfSigned.identity, applicationProtocols: ["dev"])
+// client:
+var clientConfig = QUICClient.Configuration(applicationProtocols: ["dev"])
+clientConfig.trustRoots = .certificates([selfSigned.certificate])
+```
+
+### Demo
+
+```
+SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA=1 swift run quic-echo
+```
+
+## Testing
+
+```
+SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA=1 swift test
+```
+
+The test suite includes unit tests for the configuration surface plus
+end-to-end integration tests over loopback UDP: stream echoes, concurrent
+streams and connections, 8 MiB flow-control-crossing transfers, half-close,
+`RESET_STREAM`/`STOP_SENDING` semantics, datagram round trips and error cases,
+TLS trust failures, ALPN mismatch, post-quantum key exchange, and graceful
+shutdown.
+
+## Architecture
+
+```
+┌────────────────────────────────────────────────┐
+│  QUIC (this library)                           │
+│  QUICServer / QUICClient / QUICConnection /    │
+│  QUICStream — async/await, AsyncSequence       │
+├────────────────────────────────────────────────┤
+│  NIOQUIC (apple/swift-nio-quic)                │
+│  Channel pipeline bindings, multiplexing       │
+├────────────────────────────────────────────────┤
+│  SwiftNetwork QUIC (swift-network-evolution)   │
+│  + SwiftTLS — protocol implementation          │
+└────────────────────────────────────────────────┘
+```
+
+## License
+
+Apache 2.0
