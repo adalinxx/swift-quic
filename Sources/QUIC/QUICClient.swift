@@ -110,7 +110,10 @@ public enum QUICClient {
     ///     bind a specific local port — required for NAT hole punching, where
     ///     the local mapping you advertise to the peer must correspond to the
     ///     socket QUIC actually uses. When set, `SO_REUSEADDR` is enabled so a
-    ///     known port can be rebound promptly (e.g. after a STUN exchange).
+    ///     known port can be rebound promptly (e.g. after a STUN exchange), and
+    ///     the socket is *connected* to the server so replies are demultiplexed
+    ///     to it by full 4-tuple even when another socket shares the local port.
+    ///     This pins the socket to `host:port`; use `nil` for ordinary dials.
     ///   - eventLoopGroup: The event loop group to run on. Defaults to the
     ///     shared singleton.
     public static func connect(
@@ -159,7 +162,7 @@ public enum QUICClient {
         if let localAddress {
             // Binding a specific local port typically means the caller wants to
             // reuse a known mapping (NAT hole punching); allow prompt rebind.
-            udpChannel = try await DatagramBootstrap(group: eventLoopGroup)
+            let bound = try await DatagramBootstrap(group: eventLoopGroup)
             // Batch datagram reads (recvmmsg on Linux). The receive allocator must
             // give each of the N message slots room for a full datagram, or the
             // vector read truncates packets (NIO splits one buffer N ways).
@@ -167,6 +170,27 @@ public enum QUICClient {
             .channelOption(.recvAllocator, value: FixedSizeRecvByteBufferAllocator(capacity: 8 * 2048))
             .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
                 .bind(to: localAddress, channelInitializer: channelInitializer)
+
+            // Connect the UDP socket to the server. When this socket shares its
+            // local port with another (e.g. a QUIC listener during NAT hole
+            // punching), an *unconnected* socket loses the kernel's datagram
+            // demultiplexing: the server's handshake reply is delivered to the
+            // other socket by 2-tuple, and the handshake times out. Connecting
+            // pins a full 4-tuple so replies always land here.
+            //
+            // Only done on the explicit-`localAddress` path: connecting fixes
+            // the peer, and NIO fatal-errors if a datagram is later written to a
+            // different address. That is safe because the client sends every
+            // packet to `remoteAddress` and the underlying stack performs no
+            // address migration — but we confine it to the opt-in hole-punching
+            // case rather than changing every ordinary dial.
+            do {
+                try await bound.connect(to: remoteAddress).get()
+            } catch {
+                try? await bound.close().get()
+                throw error
+            }
+            udpChannel = bound
         } else {
             let bindHost: String
             switch remoteAddress {
