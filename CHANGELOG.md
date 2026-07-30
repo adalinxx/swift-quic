@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.9.0 — 2026-07-30
+
+- **NAT hole punching now works from a shared local port.**
+  `QUICClient.connect(localAddress:)` (and `withConnection`) now *connects* the
+  UDP socket to the server when an explicit `localAddress` is given, in addition
+  to binding it. Previously the socket was bound but left unconnected, so when it
+  shared its local port with another socket (e.g. a QUIC listener during hole
+  punching) the kernel demultiplexed the server's handshake reply to the other
+  socket by 2-tuple and the handshake timed out. Connecting pins a full 4-tuple
+  so replies always land on the dialing socket.
+  - Scoped to the explicit-`localAddress` path only: connecting fixes the peer
+    (NIO fatal-errors on a datagram written to any other address), which is
+    correct for hole punching but would interfere with a hypothetical migrating
+    server on ordinary dials, so ephemeral dials are unchanged. Safe because the
+    client sends every packet to the target address and the stack does no
+    address migration. Verified end-to-end on macOS and Linux.
+  - Thanks to the IvyQUIC integration for the root-cause diagnosis (bind
+    succeeds, handshake times out; the cause is UDP demultiplexing on the
+    unconnected socket, not `SO_REUSEPORT`).
+
 ## 0.8.0 — 2026-07-30
 
 - **WebTransport streams** (draft-ietf-webtrans-http3 §4): open and accept
