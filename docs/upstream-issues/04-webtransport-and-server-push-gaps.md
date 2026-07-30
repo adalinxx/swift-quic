@@ -38,17 +38,26 @@ blocked as first thought.
   datagrams (quarter-stream-id + payload) and capsules, with 9 unit tests
   including the RFC 9000 § A.1 known-answer vector.
 
-**Remaining work** (the real effort, in progress):
+**Status: shipped.** WebTransport is implemented in swift-quic
+(`WebTransportServer`/`WebTransportClient`, `WebTransportSession`,
+`WebTransportStream`) and end-to-end tested on macOS and Linux:
 
-1. Route inbound QUIC datagrams on the H3 connection channel to the owning
-   request stream by quarter-stream-id, and provide a send path — this needs a
-   handler on the connection-channel pipeline alongside `HTTP3ConnectionHandler`.
-2. Extended-CONNECT session lifecycle: accept `CONNECT` + `:protocol` and keep
-   the stream open as a session, mapping WT streams/datagrams to it.
-3. Interop against a browser or `webtransport-go`.
+1. **Datagram routing — done.** A `WebTransportConnectionHandler` on the
+   connection-channel pipeline (ahead of `HTTP3ConnectionHandler`) demultiplexes
+   inbound QUIC datagrams to the owning session by quarter-stream-id and
+   originates outbound datagram writes.
+2. **Session lifecycle — done.** Extended CONNECT (`:protocol=webtransport`) is
+   accepted server-side and issued client-side; the CONNECT stream is held open
+   for the session's lifetime and torn down on app/peer/connection close.
+3. **Streams — done.** `WebTransportSession.openBidirectionalStream()` /
+   `openUnidirectionalStream()` and `incomingStreams` create and accept
+   type-prefixed (`0x41`/`0x54` + session ID) QUIC streams. A per-stream inbound
+   router peeks the first varint(s) to divert WebTransport streams to their
+   session while replaying non-WebTransport bytes to HTTP/3 unchanged.
 
-The foundation (1 of 3 pieces) is done; the connection-channel datagram routing
-and session lifecycle are the next steps.
+The one fork change required was extended-CONNECT validation (RFC 9220) in
+swift-nio-http3, prepared as an upstream PR. Remaining nice-to-have: interop
+against a browser or `webtransport-go`.
 
 ## HTTP/3 server push
 

@@ -32,6 +32,21 @@ private actor DatagramCollector {
     }
 }
 
+/// A one-shot value box tests can await across the client/server boundary.
+private actor ValueBox<Value: Sendable> {
+    private var value: Value?
+    func set(_ newValue: Value) { self.value = newValue }
+
+    /// Waits until a value is set or the deadline passes; returns it (or nil).
+    func waitForValue(within: Duration) async -> Value? {
+        let deadline = ContinuousClock.now + within
+        while self.value == nil, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        return self.value
+    }
+}
+
 @Suite(.timeLimit(.minutes(2)))
 struct WebTransportTests {
     private func withServer(
@@ -142,6 +157,94 @@ struct WebTransportTests {
             let total = await collector.waitForCount(baseline + 10, within: .seconds(2))
             // Unreliable, but loopback should deliver most.
             #expect(total - baseline >= 5)
+            session.close()
+        }
+    }
+
+    @Test
+    func bidirectionalStreamEcho() async throws {
+        // Server: for each incoming stream, read to EOF and echo it back.
+        try await self.withServer { session in
+            for await stream in session.incomingStreams {
+                Task {
+                    guard let payload = try? await stream.collect(upTo: 1 << 20) else { return }
+                    try? await stream.send(payload)
+                    await stream.finish()
+                }
+            }
+        } _: { clientConfiguration, port in
+            let session = try await WebTransportClient.connect(
+                to: "127.0.0.1",
+                port: port,
+                configuration: clientConfiguration
+            )
+            let stream = try await session.openBidirectionalStream()
+            #expect(!stream.isUnidirectional)
+            #expect(stream.isLocallyInitiated)
+            try await stream.send("hello webtransport streams")
+            await stream.finish()
+            let echoed = try await stream.collect(upTo: 1 << 20)
+            #expect(String(buffer: echoed) == "hello webtransport streams")
+            session.close()
+        }
+    }
+
+    @Test
+    func unidirectionalStreamDelivery() async throws {
+        let received = ValueBox<String>()
+        // Server: read the send-only stream the peer opened.
+        try await self.withServer { session in
+            for await stream in session.incomingStreams {
+                #expect(stream.isUnidirectional)
+                #expect(!stream.isLocallyInitiated)
+                let received = received
+                Task {
+                    if let payload = try? await stream.collect(upTo: 1 << 20) {
+                        await received.set(String(buffer: payload))
+                    }
+                }
+            }
+        } _: { clientConfiguration, port in
+            let session = try await WebTransportClient.connect(
+                to: "127.0.0.1",
+                port: port,
+                configuration: clientConfiguration
+            )
+            let stream = try await session.openUnidirectionalStream()
+            #expect(stream.isUnidirectional)
+            #expect(stream.isLocallyInitiated)
+            try await stream.send("unidirectional payload")
+            await stream.finish()
+            let got = await received.waitForValue(within: .seconds(3))
+            #expect(got == "unidirectional payload")
+            session.close()
+        }
+    }
+
+    @Test
+    func multipleChunksOnOneStream() async throws {
+        try await self.withServer { session in
+            for await stream in session.incomingStreams {
+                Task {
+                    guard let payload = try? await stream.collect(upTo: 1 << 20) else { return }
+                    try? await stream.send(payload)
+                    await stream.finish()
+                }
+            }
+        } _: { clientConfiguration, port in
+            let session = try await WebTransportClient.connect(
+                to: "127.0.0.1",
+                port: port,
+                configuration: clientConfiguration
+            )
+            let stream = try await session.openBidirectionalStream()
+            for index in 0..<8 {
+                try await stream.send("chunk-\(index);")
+            }
+            await stream.finish()
+            let echoed = try await stream.collect(upTo: 1 << 20)
+            let expected = (0..<8).map { "chunk-\($0);" }.joined()
+            #expect(String(buffer: echoed) == expected)
             session.close()
         }
     }
