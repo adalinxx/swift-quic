@@ -19,6 +19,7 @@ public import QUIC
 import HTTP3
 @_spi(HTTP3AsyncInterface) import NIOHTTP3
 import struct NIOQUIC.QUICStreamCreator
+import NIOQUICHelpers
 import class NIOQUIC.QUICHandler
 
 /// A WebTransport server (draft-ietf-webtrans-http3) bound to a UDP port.
@@ -129,7 +130,11 @@ public final class WebTransportServer: Sendable {
                             connectionChannel.eventLoop.makeCompletedFuture {
                                 let wtHandler = WebTransportConnectionHandler()
                                 try connectionChannel.pipeline.syncOperations.addHandler(wtHandler)
-                                registry.register(connectionChannel: connectionChannel, handler: wtHandler)
+                                registry.register(
+                                    connectionChannel: connectionChannel,
+                                    handler: wtHandler,
+                                    streamCreator: streamCreator
+                                )
                                 connectionChannel.closeFuture.whenComplete { _ in
                                     registry.unregister(connectionChannel: connectionChannel)
                                 }
@@ -171,9 +176,7 @@ public final class WebTransportServer: Sendable {
                             }
                         },
                         inboundStreamInitializer: { streamChannel in
-                            streamChannel.parent!.pipeline
-                                .handler(type: HTTP3ConnectionHandler<QUICStreamCreator>.self)
-                                .flatMap { $0.inboundStreamReceived(streamChannel) }
+                            Self.routeInboundStream(streamChannel, registry: registry)
                         },
                         noMoreConnections: {
                             sessionsContinuation.finish()
@@ -237,6 +240,34 @@ public final class WebTransportServer: Sendable {
         }
     }
 
+    /// Routes an inbound QUIC stream: WebTransport streams go to their session,
+    /// everything else (CONNECT requests, control, QPACK) to HTTP/3.
+    static func routeInboundStream(
+        _ streamChannel: any Channel,
+        registry: WebTransportConnectionRegistry
+    ) -> EventLoopFuture<Void> {
+        let handOff: @Sendable (any Channel) -> EventLoopFuture<Void> = { channel in
+            channel.parent!.pipeline
+                .handler(type: HTTP3ConnectionHandler<QUICStreamCreator>.self)
+                .flatMap { $0.inboundStreamReceived(channel) }
+        }
+        guard let parent = streamChannel.parent,
+            let handler = registry.handler(forConnectionID: ObjectIdentifier(parent))
+        else {
+            return handOff(streamChannel)
+        }
+        return streamChannel.getOption(.quicStreamID).flatMap { streamID in
+            streamChannel.eventLoop.makeCompletedFuture {
+                let router = WebTransportInboundStreamRouter(
+                    streamID: streamID,
+                    wtHandler: handler,
+                    handOffToHTTP3: handOff
+                )
+                try streamChannel.pipeline.syncOperations.addHandler(router)
+            }
+        }
+    }
+
     private static func handleCONNECT(
         stream: RequestStream,
         registry: WebTransportConnectionRegistry,
@@ -244,10 +275,11 @@ public final class WebTransportServer: Sendable {
         bufferCount: Int
     ) async {
         guard let connID = stream.connectionID,
-            let wtHandler = registry.handler(forConnectionID: connID)
+            let entry = registry.entry(forConnectionID: connID)
         else {
             return
         }
+        let wtHandler = entry.handler
         do {
             try await stream.asyncChannel.executeThenClose { inbound, outbound in
                 var iterator = inbound.makeAsyncIterator()
@@ -269,7 +301,8 @@ public final class WebTransportServer: Sendable {
                     sessionID: stream.streamID,
                     request: request,
                     sink: sink,
-                    connectionHandler: wtHandler
+                    connectionHandler: wtHandler,
+                    streamCreator: entry.streamCreator
                 )
                 sessionsContinuation.yield(session)
 

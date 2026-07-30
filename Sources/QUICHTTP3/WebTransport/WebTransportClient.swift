@@ -19,6 +19,7 @@ public import QUIC
 import HTTP3
 @_spi(HTTP3AsyncInterface) import NIOHTTP3
 import struct NIOQUIC.QUICStreamCreator
+import NIOQUICHelpers
 import class NIOQUIC.QUICHandler
 
 /// Errors surfaced by the WebTransport layer.
@@ -98,6 +99,7 @@ public enum WebTransportClient {
         }
 
         let wtHandlerBox = NIOLockedValueBox<WebTransportConnectionHandler?>(nil)
+        let streamCreatorBox = NIOLockedValueBox<QUICStreamCreator?>(nil)
         let finalQUICConfig = quicConfig
 
         // Build the QUIC handler and the HTTP/3 client multiplexer together on
@@ -137,6 +139,7 @@ public enum WebTransportClient {
                                         let wtHandler = WebTransportConnectionHandler()
                                         try connectionChannel.pipeline.syncOperations.addHandler(wtHandler)
                                         wtHandlerBox.withLockedValue { $0 = wtHandler }
+                                        streamCreatorBox.withLockedValue { $0 = streamCreator }
                                         let h3Handler = HTTP3ConnectionHandler.client(
                                             eventLoop: connectionChannel.eventLoop,
                                             configuration: .defaults,
@@ -152,9 +155,25 @@ public enum WebTransportClient {
                                     }
                                 },
                                 inboundStreamInitializer: { streamChannel in
-                                    streamChannel.parent!.pipeline
-                                        .handler(type: HTTP3ConnectionHandler<QUICStreamCreator>.self)
-                                        .flatMap { $0.inboundStreamReceived(streamChannel) }
+                                    let handOff: @Sendable (any Channel) -> EventLoopFuture<Void> = { channel in
+                                        channel.parent!.pipeline
+                                            .handler(type: HTTP3ConnectionHandler<QUICStreamCreator>.self)
+                                            .flatMap { $0.inboundStreamReceived(channel) }
+                                    }
+                                    guard let handler = wtHandlerBox.withLockedValue({ $0 }) else {
+                                        return handOff(streamChannel)
+                                    }
+                                    return streamChannel.getOption(.quicStreamID).flatMap { streamID in
+                                        streamChannel.eventLoop.makeCompletedFuture {
+                                            try streamChannel.pipeline.syncOperations.addHandler(
+                                                WebTransportInboundStreamRouter(
+                                                    streamID: streamID,
+                                                    wtHandler: handler,
+                                                    handOffToHTTP3: handOff
+                                                )
+                                            )
+                                        }
+                                    }
                                 }
                             ),
                             eventLoop: channel.eventLoop
@@ -170,7 +189,9 @@ public enum WebTransportClient {
                 remoteAddress: remoteAddress,
                 inboundPushStreamInitializer: { (_: HTTP3StreamInitializerParameters) in () }
             )
-            guard let wtHandler = wtHandlerBox.withLockedValue({ $0 }) else {
+            guard let wtHandler = wtHandlerBox.withLockedValue({ $0 }),
+                let streamCreator = streamCreatorBox.withLockedValue({ $0 })
+            else {
                 throw WebTransportError(code: .connectionFailed)
             }
 
@@ -181,6 +202,7 @@ public enum WebTransportClient {
                 request: request,
                 over: h3Connection,
                 wtHandler: wtHandler,
+                streamCreator: streamCreator,
                 bufferCount: bufferCount,
                 ownedUDPChannel: udpChannel
             )
@@ -195,6 +217,7 @@ public enum WebTransportClient {
         request: HTTPRequest,
         over h3Connection: HTTP3ClientConnection<Void, QUICStreamCreator>,
         wtHandler: WebTransportConnectionHandler,
+        streamCreator: QUICStreamCreator,
         bufferCount: Int,
         ownedUDPChannel: any Channel
     ) async throws -> WebTransportSession {
@@ -245,7 +268,8 @@ public enum WebTransportClient {
                             sessionID: sessionID,
                             request: request,
                             sink: sink,
-                            connectionHandler: wtHandler
+                            connectionHandler: wtHandler,
+                            streamCreator: streamCreator
                         )
                         resumeOnce(.success(session))
 

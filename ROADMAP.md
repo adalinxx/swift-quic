@@ -31,15 +31,14 @@ split by who can move each item.
   both directions, **trailer fields** (send + receive), end-to-end tested and
   verified against `cloudflare-quic.com`.
 
-- **WebTransport** (draft-ietf-webtrans-http3): sessions over extended CONNECT
-  and datagrams (`WebTransportServer`/`WebTransportClient`), end-to-end tested.
+- **WebTransport** (draft-ietf-webtrans-http3): sessions over extended CONNECT,
+  datagrams, and bi/unidirectional streams (`WebTransportServer`/
+  `WebTransportClient`, `WebTransportSession`, `WebTransportStream`), end-to-end
+  tested. An inbound stream-type router (peeking `0x41`/`0x54` + session ID)
+  diverts WebTransport streams from HTTP/3 request handling while replaying
+  non-WebTransport bytes unchanged.
 
 ## In progress (ours to do)
-
-- **WebTransport streams**: type-prefixed QUIC bi/unidirectional streams
-  (`0x41`/`0x54` + session ID) need an inbound stream-type router installed
-  ahead of HTTP/3 (to divert WT streams from H3 request handling). Sessions and
-  datagrams are done; this is the remaining WebTransport sub-feature.
 
 - **Interop matrix validation**: bidirectional hash-verified transfers
   against quic-go (as server) and quiche (as client) already pass, and the

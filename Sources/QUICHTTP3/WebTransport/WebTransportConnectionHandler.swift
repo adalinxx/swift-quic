@@ -17,16 +17,20 @@ import NIOCore
 final class WebTransportSessionSink: Sendable {
     let datagrams: AsyncStream<ByteBuffer>
     let datagramContinuation: AsyncStream<ByteBuffer>.Continuation
+    let incomingStreams: AsyncStream<WebTransportStream>
+    let incomingStreamContinuation: AsyncStream<WebTransportStream>.Continuation
 
     init(datagramBufferCount: Int) {
         (self.datagrams, self.datagramContinuation) = AsyncStream.makeStream(
             of: ByteBuffer.self,
             bufferingPolicy: .bufferingNewest(datagramBufferCount)
         )
+        (self.incomingStreams, self.incomingStreamContinuation) = AsyncStream.makeStream(of: WebTransportStream.self)
     }
 
     func finish() {
         self.datagramContinuation.finish()
+        self.incomingStreamContinuation.finish()
     }
 }
 
@@ -71,6 +75,15 @@ final class WebTransportConnectionHandler: ChannelDuplexHandler, @unchecked Send
     func unregister(sessionID: UInt64) {
         let sink = self.sinks.withLockedValue { $0.removeValue(forKey: sessionID) }
         sink?.finish()
+    }
+
+    /// Delivers an accepted inbound WebTransport stream to its session.
+    func deliverInboundStream(_ stream: WebTransportStream, sessionID: UInt64) {
+        if let sink = self.sinks.withLockedValue({ $0[sessionID] }) {
+            sink.incomingStreamContinuation.yield(stream)
+        } else {
+            Task { await stream.close() }
+        }
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {

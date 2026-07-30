@@ -21,8 +21,8 @@ verification, sensible transport parameters).
   SSE-style responses) and **trailer fields**. Verified against production
   servers (fetches `cloudflare-quic.com` over HTTP/3).
 - **WebTransport** (draft-ietf-webtrans-http3): `WebTransportServer` /
-  `WebTransportClient` with sessions over HTTP/3 extended CONNECT and
-  datagrams, end-to-end tested. (WebTransport streams are in progress.)
+  `WebTransportClient` with sessions over HTTP/3 extended CONNECT, datagrams,
+  and bidirectional/unidirectional streams, end-to-end tested.
 - **Streams**: bidirectional and unidirectional, client- and server-initiated,
   with flow-control-aware backpressure on reads and writes.
 - **Unreliable datagrams** (RFC 9221): `sendDatagram(_:)` and an async
@@ -147,6 +147,42 @@ try await connection.withStreamingRequest(HTTPRequest(method: .post, scheme: "ht
 ```
 
 Run the demo with `swift run quic-h3-demo`.
+
+### WebTransport
+
+WebTransport (draft-ietf-webtrans-http3) runs over HTTP/3 extended CONNECT and
+offers unreliable datagrams plus reliable bidirectional/unidirectional streams,
+all multiplexed on one session. It ships in the `QUICHTTP3` product.
+
+```swift
+import QUICHTTP3
+
+// Server: accept sessions; echo datagrams and each incoming stream.
+let server = try await WebTransportServer.bind(
+    host: "0.0.0.0", port: 443,
+    configuration: .init(identity: .certificateChain(pemFile: "cert.pem", privateKeyPEMFile: "key.pem"))
+)
+try await server.run { session in
+    Task { for await datagram in session.datagrams { session.sendDatagram(datagram) } }
+    for await stream in session.incomingStreams {
+        Task {
+            let payload = try? await stream.collect(upTo: 1 << 20)
+            if let payload { try? await stream.send(payload) }
+            await stream.finish()
+        }
+    }
+}
+
+// Client: open a session, then a bidirectional stream.
+let session = try await WebTransportClient.connect(to: "example.com", port: 443, path: "/wt")
+session.sendDatagram("unreliable ping")
+
+let stream = try await session.openBidirectionalStream()
+try await stream.send("hello over a stream")
+await stream.finish()
+print(String(buffer: try await stream.collect(upTo: 1 << 20)))
+session.close()
+```
 
 ### Development TLS in one line
 

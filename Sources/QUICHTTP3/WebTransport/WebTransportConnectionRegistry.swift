@@ -20,7 +20,14 @@ import struct NIOQUIC.QUICStreamCreator
 final class WebTransportConnectionRegistry: Sendable {
     typealias H3Connection = HTTP3ServerConnection<WebTransportServer.RequestStream, QUICStreamCreator>
 
-    private let handlers = NIOLockedValueBox<[ObjectIdentifier: WebTransportConnectionHandler]>([:])
+    /// A connection's WebTransport datagram handler and its QUIC stream creator
+    /// (used to open outbound WebTransport streams).
+    struct Entry: Sendable {
+        let handler: WebTransportConnectionHandler
+        let streamCreator: QUICStreamCreator
+    }
+
+    private let entries = NIOLockedValueBox<[ObjectIdentifier: Entry]>([:])
     let connections: AsyncStream<H3Connection>
     private let connectionsContinuation: AsyncStream<H3Connection>.Continuation
 
@@ -28,16 +35,22 @@ final class WebTransportConnectionRegistry: Sendable {
         (self.connections, self.connectionsContinuation) = AsyncStream.makeStream(of: H3Connection.self)
     }
 
-    func register(connectionChannel: any Channel, handler: WebTransportConnectionHandler) {
-        self.handlers.withLockedValue { $0[ObjectIdentifier(connectionChannel)] = handler }
+    func register(connectionChannel: any Channel, handler: WebTransportConnectionHandler, streamCreator: QUICStreamCreator) {
+        self.entries.withLockedValue {
+            $0[ObjectIdentifier(connectionChannel)] = Entry(handler: handler, streamCreator: streamCreator)
+        }
     }
 
     func unregister(connectionChannel: any Channel) {
-        self.handlers.withLockedValue { _ = $0.removeValue(forKey: ObjectIdentifier(connectionChannel)) }
+        self.entries.withLockedValue { _ = $0.removeValue(forKey: ObjectIdentifier(connectionChannel)) }
+    }
+
+    func entry(forConnectionID id: ObjectIdentifier) -> Entry? {
+        self.entries.withLockedValue { $0[id] }
     }
 
     func handler(forConnectionID id: ObjectIdentifier) -> WebTransportConnectionHandler? {
-        self.handlers.withLockedValue { $0[id] }
+        self.entries.withLockedValue { $0[id]?.handler }
     }
 
     func registerConnection(connectionChannel: any Channel, h3: H3Connection) {

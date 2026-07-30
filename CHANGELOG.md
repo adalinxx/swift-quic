@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.8.0 — 2026-07-30
+
+- **WebTransport streams** (draft-ietf-webtrans-http3 §4): open and accept
+  bidirectional and unidirectional streams within a session.
+  - `WebTransportSession.openBidirectionalStream()` /
+    `openUnidirectionalStream()` open a QUIC stream framed with the WebTransport
+    stream-type signal (`0x41` bidirectional / `0x54` unidirectional) followed
+    by the session ID.
+  - `WebTransportSession.incomingStreams` surfaces peer-opened streams.
+  - `WebTransportStream` carries raw application bytes (framing stripped):
+    `send(_:)`, `finish()`, `close()`, `collect(upTo:)`, and an `inbound`
+    `AsyncSequence`.
+  - A per-stream inbound router peeks the first varint(s) and routes
+    WebTransport streams to their session while replaying non-WebTransport
+    bytes to HTTP/3 unchanged, so HTTP/3 request/control/QPACK handling is
+    unaffected. The router is installed only on WebTransport connections.
+  - End-to-end tested on macOS and Linux (bidirectional echo, unidirectional
+    delivery, multi-chunk streams) between the swift-quic client and server.
+- With this, the WebTransport track (sessions + datagrams + streams) is
+  feature-complete.
+
 ## 0.7.0 — 2026-07-29
 
 - **WebTransport** (draft-ietf-webtrans-http3): a new `WebTransportServer` /
@@ -17,8 +38,7 @@
 - Required a fork fix (extended CONNECT with `:scheme`/`:path`, RFC 9220) in
   swift-nio-http3, prepared as an upstream PR.
 - **Remaining**: WebTransport *streams* (type-prefixed QUIC bi/unidirectional
-  streams) are the next addition; they need an inbound stream-type router in
-  front of HTTP/3. Datagrams are complete. See ROADMAP.md.
+  streams) — landed in 0.8.0.
 
 ## 0.6.0 — 2026-07-29
 
